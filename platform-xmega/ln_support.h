@@ -38,6 +38,6 @@ void loconet_init(void);
 uint8_t ln_create_message(uint8_t *msg);
 void ln_gpio_process_tx(void);
 void ln_gpio_process_rx(lnMsg *LnPacket);
-
+void ln_throttle_process(lnMsg *LnPacket);
 
 #endif /* LN_SUPPORT_H_ */

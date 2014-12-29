@@ -61,6 +61,7 @@ extern uint8_t ln_gpio_status_pre;
 extern uint8_t ln_gpio_status_tx;
 extern uint8_t ln_gpio_opcode_tx;
 extern uint8_t ln_gpio_opcode_tx2;
+extern rwSlotDataMsg rSlot;
 
 uint8_t dimm_target_temp;
 uint8_t dimm_delta_temp;
@@ -208,6 +209,9 @@ void cmd_exec(void)
 			break;
 		case 4:
 			USB_enter_bootloader();
+			break;
+		case 5:
+			rSlot.slot = 0;
 			break;
 	}
 	
