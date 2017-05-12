@@ -36,8 +36,11 @@
 
 void loconet_init(void);
 uint8_t ln_create_message(uint8_t *msg);
+uint8_t ln_create_message_ack(uint8_t *msg);
 void ln_gpio_process_tx(void);
 void ln_gpio_process_rx(lnMsg *LnPacket);
 void ln_throttle_process(lnMsg *LnPacket);
+void ln_load_board_config(void);
+void ln_create_opcode(uint8_t *buf, uint8_t opc, uint16_t addr);
 
 #endif /* LN_SUPPORT_H_ */

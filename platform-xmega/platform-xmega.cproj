@@ -37,7 +37,7 @@
         </dependencies>
       </framework-data>
     </AsfFrameworkConfig>
-    <avrtool>com.atmel.avrdbg.tool.simulator</avrtool>
+    <avrtool>com.atmel.avrdbg.tool.avrdragon</avrtool>
     <com_atmel_avrdbg_tool_simulator>
       <ToolOptions>
         <InterfaceProperties>
@@ -62,6 +62,7 @@
       <ToolNumber>00A2000015DA</ToolNumber>
       <ToolName>AVR Dragon</ToolName>
     </com_atmel_avrdbg_tool_avrdragon>
+    <preserveEEPROM>True</preserveEEPROM>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>
@@ -142,6 +143,12 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="contiki-conf.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="loconet\ln_sw_uart.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="loconet\ln_sw_uart.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="main.c">

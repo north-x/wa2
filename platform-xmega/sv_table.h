@@ -46,6 +46,7 @@
 #include "usb/usb.h"
 #include <avr/wdt.h>
 #include <string.h>
+#include "ln_buf.h"
 
 void cmd_exec(void);
 void tse_update_page_read(void);
@@ -61,6 +62,8 @@ extern uint8_t ln_gpio_status_pre;
 extern uint8_t ln_gpio_status_tx;
 extern uint8_t ln_gpio_opcode_tx;
 extern uint8_t ln_gpio_opcode_tx2;
+extern uint8_t ln_wdt_counter;
+extern LnBuf LnBuffer;
 extern rwSlotDataMsg rSlot;
 
 uint8_t dimm_target_temp;
@@ -86,6 +89,8 @@ SV_MSB(4, "Serial Number H", eeprom.sv_serial_number, 0)
 SV(5, "Command Register", cmd_register, cmd_exec)
 SV(6, "Config Register 1", eeprom.configA, wa2_update_configuration)
 SV(7, "Config Register 2", eeprom.configB, wa2_update_configuration)
+SV(8, "WDT Reset Counter", ln_wdt_counter, 0)
+SV(9, "Rx Error Counter", LnBuffer.Stats.RxErrors, 0)
 /*SV(8, "User Register 1", tse_user_reg1, 0)
 SV(9, "User Register 2", tse_user_reg2, 0)*/
 SV(10, "LN GPIO Status", ln_gpio_status, 0)
@@ -212,6 +217,7 @@ void cmd_exec(void)
 			break;
 		case 5:
 			rSlot.slot = 0;
+			servo_status |= (1<<SERVO_STATUS_PWR_ALWAYS_ON);
 			break;
 	}
 	
@@ -247,6 +253,7 @@ void dimm_delta_parameter_update(void)
 void ln_update_threshold(void)
 {
 	ACA.CTRLB = ((eeprom.ln_threshold/4)-1)&0x3F;
+	DACB.CH0DATAH = eeprom.ln_threshold<<1;
 }
 
 #endif /* PARAMETER_TABLE_H_ */
