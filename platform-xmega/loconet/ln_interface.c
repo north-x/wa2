@@ -37,7 +37,9 @@
 
 #include "ln_interface.h"
 
-
+uint8_t LN_BACKOFF_MIN = LN_CARRIER_TICKS + LN_MASTER_DELAY;
+uint8_t LN_BACKOFF_INITIAL = LN_CARRIER_TICKS + LN_MASTER_DELAY + LN_INITIAL_PRIO_DELAY;
+uint8_t LN_BACKOFF_MAX = LN_CARRIER_TICKS + LN_MASTER_DELAY + LN_INITIAL_PRIO_DELAY + 10;
 
 static LnBuf *pstLnRxBuffer;  // this queue eats received LN messages
 
