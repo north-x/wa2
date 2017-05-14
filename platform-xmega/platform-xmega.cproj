@@ -154,12 +154,6 @@
     <Compile Include="main.c">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="Descriptors.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="Descriptors.h">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="dev\clock-avr.h">
       <SubType>compile</SubType>
     </Compile>
@@ -172,9 +166,9 @@
     <Compile Include="eeprom.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="ln_hwtx_hwrx_uart.c">
+    <None Include="ln_hwtx_hwrx_uart.c">
       <SubType>compile</SubType>
-    </Compile>
+    </None>
     <Compile Include="ln_support.c">
       <SubType>compile</SubType>
     </Compile>
@@ -307,31 +301,25 @@
     <Compile Include="ubasic\ubasic.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="usb\Common.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="usb\Events.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="usb\pipe.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="usb\StdDescriptors.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="usb\StdRequestType.h">
+    <Compile Include="usb\cdc_standard.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="usb\usb.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="usb\usb_pipe.h">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="usb\usb_requests.c">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="usb\usb_standard.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="usb\usb_xmega.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="usb\usb_xmega.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="usb\usb_xmega_internal.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="usb_support.c">

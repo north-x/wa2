@@ -1,151 +1,155 @@
-// Minimal USB Stack for ATxmega32a4u and related
-// http://nonolithlabs.com
-// (C) 2011 Kevin Mehall (Nonolith Labs) <km@kevinmehall.net>
-//
-// Heavily borrows from LUFA
-// Copyright 2011  Dean Camera (dean [at] fourwalledcubicle [dot] com)
-//
-// Licensed under the terms of the GNU GPLv3+
-
-#include <avr/io.h>
 #include "usb.h"
+#include "usb_xmega.h"
 
-inline bool USB_handleSetAddress(USB_Request_Header_t* req){
-	uint8_t    DeviceAddress = (req -> wValue & 0x7F);
-	USB_ep0_enableOut();
-	USB_ep0_send(0);
-	USB_ep_wait(0x80);
-	USB.ADDR = DeviceAddress;
-	USB_DeviceState = (DeviceAddress) ? DEVICE_STATE_Addressed : DEVICE_STATE_Default;
-	return true;
-}
+USB_SetupPacket usb_setup;
+__attribute__((__aligned__(4))) uint8_t ep0_buf_in[USB_EP0_SIZE];
+__attribute__((__aligned__(4))) uint8_t ep0_buf_out[USB_EP0_SIZE];
+volatile uint8_t usb_configuration;
 
-#if !defined(NO_INTERNAL_SERIAL) && (USE_INTERNAL_SERIAL != NO_DESCRIPTOR)
-inline void USB_Device_GetSerialString(uint16_t* const UnicodeString) ATTR_NON_NULL_PTR_ARG(1);
-inline void USB_Device_GetSerialString(uint16_t* const UnicodeString){
-	//uint_reg_t CurrentGlobalInt = GetGlobalInterruptMask();
-	//GlobalInterruptDisable();
-	
-	uint8_t SigReadAddress = INTERNAL_SERIAL_START_ADDRESS;
+uint16_t usb_ep0_in_size;
+const uint8_t* usb_ep0_in_ptr;
 
-	for (uint8_t SerialCharNum = 0; SerialCharNum < (INTERNAL_SERIAL_LENGTH_BITS / 4); SerialCharNum++)
-	{					
-		uint8_t SerialByte;
+void usb_ep0_in_multi(void) {
+	uint16_t tsize = usb_ep0_in_size;
 
-		NVM.CMD    = NVM_CMD_READ_CALIB_ROW_gc;
-		SerialByte = pgm_read_byte(SigReadAddress);
-
-		if (SerialCharNum & 0x01)
-		{
-			SerialByte >>= 4;
-			SigReadAddress++;
-		}
-
-		SerialByte &= 0x0F;
-
-		UnicodeString[SerialCharNum] = ((SerialByte >= 10) ?
-									   (('A' - 10) + SerialByte) : ('0' + SerialByte));
+	if (tsize > USB_EP0_SIZE) {
+		tsize = USB_EP0_SIZE;
 	}
-	
-	NVM.CMD = NVM_CMD_NO_OPERATION_gc;
-	//SetGlobalInterruptMask(CurrentGlobalInt);
-}
 
-inline void USB_Device_GetInternalSerialDescriptor(void)
-{
-	struct
-	{
-		USB_Descriptor_Header_t Header;
-		uint16_t                UnicodeString[INTERNAL_SERIAL_LENGTH_BITS / 4];
-	}* SignatureDescriptor = (void*) ep0_buf_in;
+	memcpy(ep0_buf_in, usb_ep0_in_ptr, tsize);
+	usb_ep_start_in(0x80, ep0_buf_in, tsize, false);
 
-	SignatureDescriptor->Header.Type = DTYPE_String;
-	SignatureDescriptor->Header.Size = USB_STRING_LEN(INTERNAL_SERIAL_LENGTH_BITS / 4);
-	
-	USB_Device_GetSerialString(SignatureDescriptor->UnicodeString);
-
-	USB_ep0_send(sizeof(*SignatureDescriptor));
-}
-#endif
-
-inline bool USB_handleGetDescriptor(USB_Request_Header_t* req){
-	const void* DescriptorPointer;
-	uint16_t  DescriptorSize;
-	NVM.CMD = NVM_CMD_NO_OPERATION_gc;
-	
-	#if !defined(NO_INTERNAL_SERIAL) && (USE_INTERNAL_SERIAL != NO_DESCRIPTOR)
-	if (req->wValue == ((DTYPE_String << 8) | USE_INTERNAL_SERIAL)){
-		USB_Device_GetInternalSerialDescriptor();
-		return true;
+	if (tsize == 0) {
+		usb_ep0_out();
 	}
-	#endif
-	
-	if ((DescriptorSize = CALLBACK_USB_GetDescriptor(req->wValue, req->wIndex, &DescriptorPointer))){
-		if (DescriptorSize > req->wLength) DescriptorSize=req->wLength;
-		USB_ep0_send_progmem(DescriptorPointer, DescriptorSize);
-		return true;
-	}
-	return false;
+
+	usb_ep0_in_size -= tsize;
+	usb_ep0_in_ptr += tsize;
 }
 
-inline bool USB_handleSetConfiguration(USB_Request_Header_t* req){
-	USB_Descriptor_Device_t* DevDescriptorPtr;
-
-	uint8_t r = CALLBACK_USB_GetDescriptor((DTYPE_Device << 8), 0, (void*)&DevDescriptorPtr);
-	if (r == NO_DESCRIPTOR) return false;
-	
-	NVM.CMD = NVM_CMD_NO_OPERATION_gc;
-	uint8_t num_configs = pgm_read_byte(&DevDescriptorPtr->NumberOfConfigurations);
-	
-	if ((uint8_t)req->wValue > num_configs) return false;
-
-	USB_ep0_send(0);
-	USB_Device_ConfigurationNumber = (uint8_t)(req -> wValue);
-
-	if (USB_Device_ConfigurationNumber)
-	  USB_DeviceState = DEVICE_STATE_Configured;
-	else
-	  USB_DeviceState = (USB.ADDR) ? DEVICE_STATE_Configured : DEVICE_STATE_Powered;
-
-	EVENT_USB_Device_ConfigurationChanged(USB_Device_ConfigurationNumber);
-	return true;
-}
-
-bool USB_HandleSetup(void){
-	USB_Request_Header_t* req = (void *) ep0_buf_out;
-	
-	if ((req->bmRequestType & CONTROL_REQTYPE_TYPE) == REQTYPE_STANDARD){
-		switch (req->bRequest){
-			case REQ_GetStatus:
+void usb_handle_setup(void){
+	if ((usb_setup.bmRequestType & USB_REQTYPE_TYPE_MASK) == USB_REQTYPE_STANDARD){
+		switch (usb_setup.bRequest){
+			case USB_REQ_GetStatus:
 				ep0_buf_in[0] = 0;
 				ep0_buf_in[1] = 0;
-				USB_ep0_send(2);
-				return true;
-			case REQ_ClearFeature:
-			case REQ_SetFeature:
-				USB_ep0_send(0);
-				return true;
-			case REQ_SetAddress:
-				USB_Enable_SOF_DFLL();
-				return USB_handleSetAddress(req);
-			case REQ_GetDescriptor:
-				return USB_handleGetDescriptor(req);
-			case REQ_GetConfiguration:
-				ep0_buf_in[0] = USB_Device_ConfigurationNumber;
-				USB_ep0_send(1);
-				return true;
-			case REQ_SetConfiguration:
-				return USB_handleSetConfiguration(req);
-			case REQ_SetInterface:
-				if (EVENT_USB_Device_SetInterface(req->wIndex, req->wValue)){
-					USB_ep0_send(0);
-					return true;
+				usb_ep0_in(2);
+				return usb_ep0_out();
+
+			case USB_REQ_ClearFeature:
+			case USB_REQ_SetFeature:
+				usb_ep0_in(0);
+				return usb_ep0_out();
+
+			case USB_REQ_SetAddress:
+				usb_ep0_in(0);
+				return usb_ep0_out();
+
+			case USB_REQ_GetDescriptor: {
+				uint8_t type = (usb_setup.wValue >> 8);
+				uint8_t index = (usb_setup.wValue & 0xFF);
+				const uint8_t* descriptor = 0;
+				uint16_t size = usb_cb_get_descriptor(type, index, &descriptor);
+
+				if (size && descriptor){
+					if (size > usb_setup.wLength) {
+						size = usb_setup.wLength;
+					}
+
+					if (descriptor == ep0_buf_in) {
+						usb_ep0_in_size = 0;
+						usb_ep_start_in(0x80, ep0_buf_in, size, true);
+					} else {
+						usb_ep0_in_size = size;
+						usb_ep0_in_ptr = descriptor;
+						usb_ep0_in_multi();
+					}
+
+					return;
+				} else {
+					return usb_ep0_stall();
 				}
-			case REQ_GetInterface:
-				return false;
+			}
+			case USB_REQ_GetConfiguration:
+				ep0_buf_in[0] = usb_configuration;
+				usb_ep0_in(1);
+				return usb_ep0_out();
+
+			case USB_REQ_SetConfiguration:
+				if (usb_cb_set_configuration((uint8_t)usb_setup.wValue)) {
+					usb_ep0_in(0);
+					usb_configuration = (uint8_t)(usb_setup.wValue);
+					return usb_ep0_out();
+				} else {
+					return usb_ep0_stall();
+				}
+
+			case USB_REQ_SetInterface:
+				if (usb_cb_set_interface(usb_setup.wIndex, usb_setup.wValue)) {
+					usb_ep0_in(0);
+					return usb_ep0_out();
+				} else {
+					return usb_ep0_stall();
+				}
+
+			default:
+				return usb_ep0_stall();
 		}
 	}
-	
-	return EVENT_USB_Device_ControlRequest(req);
+
+	usb_cb_control_setup();
 }
 
+void usb_handle_control_out_complete(void) {
+	if ((usb_setup.bmRequestType & USB_REQTYPE_TYPE_MASK) == USB_REQTYPE_STANDARD) {
+		// Let the status stage proceed
+	} else {
+		usb_cb_control_out_completion();
+	}
+}
+
+void usb_handle_control_in_complete(void) {
+	if ((usb_setup.bmRequestType & USB_REQTYPE_TYPE_MASK) == USB_REQTYPE_STANDARD) {
+		switch (usb_setup.bRequest){
+			case USB_REQ_SetAddress:
+				usb_set_address(usb_setup.wValue & 0x7F);
+				usb_enable_SOF_DFLL();
+				return;
+			case USB_REQ_GetDescriptor:
+				usb_ep0_in_multi();
+				return;
+		}
+	} else {
+		usb_cb_control_in_completion();
+	}
+}
+
+void usb_handle_msft_compatible(const USB_MicrosoftCompatibleDescriptor* msft_compatible) {
+	if (usb_setup.wIndex == 0x0004) {
+		uint16_t len = usb_setup.wLength;
+		if (len > msft_compatible->dwLength) {
+			len = msft_compatible->dwLength;
+		}
+		if (len > USB_EP0_SIZE) {
+			len = USB_EP0_SIZE;
+		}
+		memcpy(ep0_buf_in, msft_compatible, len);
+		usb_ep_start_in(0x80, ep0_buf_in, len, false);
+		return usb_ep0_out();
+	} else {
+		return usb_ep0_stall();
+	}
+}
+
+void* usb_string_to_descriptor(char* str) {
+	USB_StringDescriptor* desc = (((USB_StringDescriptor*)ep0_buf_in));
+	uint16_t len = strlen(str);
+	const uint16_t maxlen = (USB_EP0_SIZE - 2)/2;
+	if (len > maxlen) len = maxlen;
+	desc->bLength = USB_STRING_LEN(len);
+	desc->bDescriptorType = USB_DTYPE_String;
+	for (int i=0; i<len; i++) {
+		desc->bString[i] = str[i];
+	}
+	return desc;
+}

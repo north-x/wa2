@@ -51,7 +51,7 @@ uint16_t deviceID;
 
 void init(void)
 {
-	USB_ConfigureClock();
+	usb_configure_clock();
 	
 	eeprom_load_status();
 	eeprom_load_storage();
@@ -64,7 +64,7 @@ void init(void)
 	
 	process_start(&etimer_process, NULL);
 	
-	usb_init();
+	usb_process_init();
 	loconet_init();
 	port_init();
 	servo_init();

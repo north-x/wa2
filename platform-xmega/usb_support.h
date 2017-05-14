@@ -33,9 +33,22 @@
 #define USB_SUPPORT_H_
 
 #include "loconet.h"
+#include <avr/pgmspace.h>
+#include "usb/usb_xmega.h"
+#include "usb/cdc_standard.h"
 
-void usb_init(void);
+void usb_process_init(void);
 void sendLocoNetPacketUSB(lnMsg *LnPacket);
+void usbserial_init(void);
+void usbserial_disable(void);
+
+#define INTERFACE_CDC_CONTROL 0
+#define INTERFACE_CDC_DATA 1
+
+#define USB_EP_CDC_NOTIFICATION 0x81
+#define USB_EP_CDC_IN           0x82
+
+#define USB_EP_CDC_OUT          0x3
 
 
 #endif /* USB_SUPPORT_H_ */
