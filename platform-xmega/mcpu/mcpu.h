@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Manuel Vetterli
+ * Copyright (c) 2017, Manuel Vetterli
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,24 +29,55 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */ 
 
-#ifndef LN_SUPPORT_H_
-#define LN_SUPPORT_H_
 
-#include "loconet.h"
+#ifndef MCPU_H_
+#define MCPU_H_
 
-void loconet_init(void);
-uint8_t ln_create_message(uint8_t *msg);
-uint8_t ln_create_message_ack(uint8_t *msg);
-void ln_gpio_process_tx(void);
-void ln_gpio_process_rx(lnMsg *LnPacket);
-void ln_throttle_process(lnMsg *LnPacket);
-void ln_load_board_config(void);
-void ln_create_opcode(uint8_t *buf, uint8_t opc, uint16_t addr);
+#define MCPU_CORE_COUNT 2
+#define MCPU_SIZE_PROGRAM_MEMORY	128
+#define MCPU_SIZE_DATA_MEMOMRY 32
 
-extern uint8_t ln_gpio_status;
-extern uint8_t ln_gpio_status_pre;
-extern uint8_t ln_gpio_status_tx;
-extern uint8_t ln_gpio_opcode_tx;
-extern uint8_t ln_gpio_opcode_tx2;
+typedef struct
+{
+	union {
+		uint8_t u08;
+		struct {
+			unsigned C : 1;
+			unsigned Z : 1;
+			unsigned I : 1;
+			unsigned D : 1;
+			unsigned B : 1;
+			unsigned R : 1;
+			unsigned V : 1;
+			unsigned N : 1;
+		} flags;
+	};
+} mcpu_flags_t;
 
-#endif /* LN_SUPPORT_H_ */
+typedef struct
+{
+	mcpu_flags_t status;
+	uint8_t timer;
+	uint8_t A, X, Y, S;
+	uint16_t PC;
+	
+	uint8_t prog_mem[MCPU_SIZE_PROGRAM_MEMORY];
+	uint8_t data_mem[MCPU_SIZE_DATA_MEMOMRY];
+} mcpu_context_t;
+
+typedef struct mcpu_program {
+	uint8_t program[MCPU_SIZE_PROGRAM_MEMORY];
+} mcpu_program_t;
+
+extern mcpu_context_t *mcpu_ctx;
+extern mcpu_context_t mcpu_cores[MCPU_CORE_COUNT];
+extern mcpu_flags_t status;
+extern uint8_t mcpu_core_status;
+
+void mcpu_start(void);
+void mcpu_supervisor(void);
+void mcpu_load_scripts(void);
+void mcpu_save_scripts(void);
+void mcpu_load_default_scripts(void);
+
+#endif /* MCPU_H_ */

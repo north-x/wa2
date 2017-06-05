@@ -172,9 +172,9 @@
     <Compile Include="eeprom.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="ln_hwtx_hwrx_uart.c">
+    <None Include="ln_hwtx_hwrx_uart.c">
       <SubType>compile</SubType>
-    </Compile>
+    </None>
     <Compile Include="ln_support.c">
       <SubType>compile</SubType>
     </Compile>
@@ -218,6 +218,30 @@
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="loconet\utils.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcpu\instructions.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcpu\mcpu.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcpu\mcpu.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcpu\mcpu_config.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcpu\mcpu_config_include.h">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcpu\sim65_instructions.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcpu\tables.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="mcpu\tables.h">
       <SubType>compile</SubType>
     </Compile>
     <Compile Include="port.c">
@@ -286,27 +310,6 @@
     <Compile Include="sys\utils.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="ubasic\basic_cfg.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\basic_interface.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\platform.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\tokenizer.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\tokenizer.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\ubasic.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\ubasic.h">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="usb\Common.h">
       <SubType>compile</SubType>
     </Compile>
@@ -347,7 +350,7 @@
   <ItemGroup>
     <Folder Include="dev" />
     <Folder Include="loconet" />
-    <Folder Include="ubasic" />
+    <Folder Include="mcpu" />
     <Folder Include="usb" />
     <Folder Include="sys" />
   </ItemGroup>

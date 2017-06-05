@@ -39,14 +39,13 @@
 
 #include "wa2.h"
 #include "eeprom.h"
-#include "platform.h"
-#include "ubasic.h"
 #include "servo.h"
 #include "port.h"
 #include "usb/usb.h"
 #include <avr/wdt.h>
 #include <string.h>
 #include "ln_buf.h"
+#include "mcpu/mcpu.h"
 
 void cmd_exec(void);
 void tse_update_page_read(void);
@@ -71,14 +70,10 @@ uint8_t dimm_delta_temp;
 uint8_t dimm_parameter_select;
 uint8_t cmd_register = 0;
 
-extern uint8_t ubasic_script_status;
-
-// Block mapping of TSE scripts starting at SV 112/170/240/304 (0x70/0xB0/0xF0/0x130)
+// Block mapping of MCPU scripts starting at SV 112
 SV_BLOCK_TABLE_BEGIN()
-SV_BLOCK_MAP(0, MAX_PROGRAM_LEN, "UB Prog 1", ubasic_scripts[0].mem)
-SV_BLOCK_MAP(1, MAX_PROGRAM_LEN, "UB Prog 2", ubasic_scripts[1].mem)
-SV_BLOCK_MAP(2, MAX_PROGRAM_LEN, "UB Prog 3", ubasic_scripts[2].mem)
-SV_BLOCK_MAP(3, MAX_PROGRAM_LEN, "UB Prog 4", ubasic_scripts[3].mem)
+SV_BLOCK_MAP(0, MCPU_SIZE_PROGRAM_MEMORY, "MCPU Prog 1", mcpu_cores[0].prog_mem)
+SV_BLOCK_MAP(1, MCPU_SIZE_PROGRAM_MEMORY, "MCPU Prog 2", mcpu_cores[1].prog_mem)
 SV_BLOCK_TABLE_END();
 
 SV_TABLE_BEGIN()
@@ -118,8 +113,8 @@ SV_MSB(31, "Standby Delay H", eeprom.servo_timeout, 0)
 SV_LSB(32, "Startup Delay L", eeprom.servo_startup_delay, 0)
 SV_MSB(33, "Startup Delay H", eeprom.servo_startup_delay, 0)
 SV(34, "Servo Start Method", eeprom.servo_start_method, servo_mode_update)
-SV_LSB(35, "UBasic Status", ubasic_script_status, 0)
-SV(36, "UBasic Autostart", eeprom.ubasic_autostart, 0)
+SV_LSB(35, "MCPU Status", mcpu_core_status, 0)
+SV(36, "MCPU Autostart", eeprom.mcpu_autostart, 0)
 SV(41, "LN GPIO 1 On Opcode 1", eeprom.ln_gpio_opcode[0][0], 0)
 SV(42, "LN GPIO 1 On Opcode 2", eeprom.ln_gpio_opcode[0][1], 0)
 SV(43, "LN GPIO 1 On Opcode 3", eeprom.ln_gpio_opcode[0][2], 0)
@@ -203,14 +198,14 @@ void cmd_exec(void)
 			break;
 		case 1:
 			eeprom_sync_storage();
-			ubasic_save_scripts();
+			mcpu_save_scripts();
 			break;
 		case 2:
 			wdt_enable(WDTO_1S);
 			break;
 		case 3:
 			eeprom_load_defaults();
-			ubasic_load_default_scripts();
+			mcpu_load_default_scripts();
 			break;
 		case 4:
 			USB_enter_bootloader();

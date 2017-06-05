@@ -43,6 +43,7 @@
 #include "usb/usb.h"
 #include "port.h"
 #include "servo.h"
+#include "mcpu/mcpu.h"
 
 void ubasic_start(void);
 void init(void);
@@ -70,7 +71,7 @@ void init(void)
 	servo_init();
 	
 	wa2_update_configuration();
-	ubasic_start();
+	mcpu_start();
 	
 	PMIC.CTRL = PMIC_LOLVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm;
 	sei();

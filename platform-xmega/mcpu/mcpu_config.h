@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Manuel Vetterli
+ * Copyright (c) 2017, Manuel Vetterli
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,24 +29,21 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */ 
 
-#ifndef LN_SUPPORT_H_
-#define LN_SUPPORT_H_
+#ifdef MEMORY_MAPPING
+USER_VARIABLE(1, ln_gpio_status, ln_gpio_status, 1)
+USER_VARIABLE(2, ln_gpio_tx, ln_gpio_status_tx, 1)
+USER_VARIABLE(3, relay_request, relay_request, 1)
+USER_VARIABLE(4, servo1_time_delta, servo[0].time_delta, 1)
+USER_VARIABLE(5, servo1_setpoint, servo[0].position_setpoint, 1)
+USER_VARIABLE(6, servo1_position, servo[0].position_actual, 1)
+USER_VARIABLE(7, servo2_time_delta, servo[1].time_delta, 1)
+USER_VARIABLE(8, servo2_setpoint, servo[1].position_setpoint, 1)
+USER_VARIABLE(9, servo2_position, servo[1].position_actual, 1)
 
-#include "loconet.h"
+/*
+USER_VARIABLE(0, "var1", var1, 0)
+USER_VARIABLE(1, "var2", var2, update_func)
+USER_ARRAY(2, "arr1", arr1, 8, update_func)
+*/
 
-void loconet_init(void);
-uint8_t ln_create_message(uint8_t *msg);
-uint8_t ln_create_message_ack(uint8_t *msg);
-void ln_gpio_process_tx(void);
-void ln_gpio_process_rx(lnMsg *LnPacket);
-void ln_throttle_process(lnMsg *LnPacket);
-void ln_load_board_config(void);
-void ln_create_opcode(uint8_t *buf, uint8_t opc, uint16_t addr);
-
-extern uint8_t ln_gpio_status;
-extern uint8_t ln_gpio_status_pre;
-extern uint8_t ln_gpio_status_tx;
-extern uint8_t ln_gpio_opcode_tx;
-extern uint8_t ln_gpio_opcode_tx2;
-
-#endif /* LN_SUPPORT_H_ */
+#endif

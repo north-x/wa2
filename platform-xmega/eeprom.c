@@ -37,8 +37,7 @@
 #include "wa2.h"
 #include "eeprom.h"
 #include "port.h"
-#include "platform.h"
-#include "ubasic.h"
+#include "mcpu/mcpu.h"
 
 struct t_eeprom_storage eeprom;
 struct t_eeprom_storage eeprom_shadow;
@@ -51,7 +50,7 @@ struct t_eeprom_storage eeprom_default = {
 			.salt = 0xAA+SOFTWARE_VERSION,
 			.sv_serial_number = 0xFFFF,
 			.sv_destination_id = 0xFFFF,
-			.ubasic_autostart = (1<<0)|(1<<1)|(0<<2)|(0<<3),
+			.mcpu_autostart = (1<<0)|(1<<1)|(0<<2)|(0<<3),
 			.configA = (0<<WA2_CONF_PWM_OUTPUTS_ENABLE)|(0<<WA2_CONF_PWM_CHANNEL7_ENABLE)|(1<<WA2_CONF_INPUTS_PULLUP_ENABLE)|(1<<WA2_CONF_SERVO_ENABLE_PWM_A),
 			.configB = 0,
 			.ln_threshold = 20,
@@ -113,8 +112,8 @@ void eeprom_load_defaults(void)
 {
 	memcpy(&eeprom, &eeprom_default, sizeof(t_eeprom_storage));
 	memcpy(&eeprom_status, &eeprom_status_default, sizeof(t_eeprom_status));
-	ubasic_load_default_scripts();
-	ubasic_save_scripts();
+	mcpu_load_default_scripts();
+	mcpu_save_scripts();
 }
 
 void eeprom_sync_storage(void)
