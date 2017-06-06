@@ -59,6 +59,8 @@ uint8_t ln_gpio_opcode_tx;
 uint8_t ln_gpio_opcode_tx2;
 uint8_t ln_wdt_flag;
 uint8_t ln_wdt_counter __attribute__ ((section (".noinit")));
+uint8_t ln_gpio_ack_counter[8];
+uint8_t ln_gpio_ack_count;
 
 extern uint16_t deviceID;
 rwSlotDataMsg rSlot;
@@ -147,8 +149,21 @@ PROCESS_THREAD(ln_ack_process, ev, data)
 		
 		if (ln_gpio_status_ack&(1<<current_bit))
 		{
-			// Re transmit
-			ln_gpio_status_tx |= (1<<current_bit);
+			if (ln_gpio_ack_counter[current_bit]>0)
+			{
+				// Re transmit
+				ln_gpio_status_tx |= (1<<current_bit);
+
+				// Decrement ACK counter if not set to infinite (255)
+				if (ln_gpio_ack_counter[current_bit]<255)
+				{
+					ln_gpio_ack_counter[current_bit]--;
+				}
+			}
+			else
+			{
+				ln_gpio_status_ack &= ~(1<<current_bit);
+			}
 		}
 		
 		current_bit++;
@@ -229,6 +244,7 @@ void ln_gpio_process_tx(void)
 				ln_gpio_status_pre |= (1<<current_bit);
 				ln_gpio_status_tx &= ~(1<<current_bit);
 				ln_gpio_status_ack |= (1<<current_bit);			
+				ln_gpio_ack_counter[current_bit] = ln_gpio_ack_count;
 			}					
 		}
 		else
@@ -238,6 +254,7 @@ void ln_gpio_process_tx(void)
 				ln_gpio_status_pre &= ~(1<<current_bit);
 				ln_gpio_status_tx &= ~(1<<current_bit);
 				ln_gpio_status_ack |= (1<<current_bit);				
+				ln_gpio_ack_counter[current_bit] = ln_gpio_ack_count;
 			}
 		}
 	}
@@ -296,9 +313,23 @@ uint8_t ln_create_message(uint8_t *msg)
 uint8_t ln_create_message_ack(uint8_t *msg)
 {
 	if (msg[0]==0)
-	return 1;
+	{
+		return 1;
+	}
 	
-	return (sendLocoNet4BytePacket(msg[0]|(1<<7), msg[1], msg[2]^(1<<6))==LN_DONE)?1:0;
+	if (msg[0]==OPC_SW_ACK)
+	{
+		return (sendLocoNet4BytePacket(OPC_LONG_ACK, msg[0]&0x7F, 0x7F)==LN_DONE)?1:0;
+	}
+	
+	if (ln_gpio_ack_count>0)
+	{
+		return (sendLocoNet4BytePacket(msg[0]|(1<<7), msg[1], msg[2]^(1<<6))==LN_DONE)?1:0;
+	}
+	else
+	{
+		return 1;
+	}
 }
 
 void ln_gpio_process_rx(lnMsg *LnPacket)
