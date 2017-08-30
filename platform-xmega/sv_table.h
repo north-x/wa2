@@ -43,7 +43,6 @@
 #include "ubasic.h"
 #include "servo.h"
 #include "port.h"
-#include "usb/usb.h"
 #include <avr/wdt.h>
 #include <string.h>
 #include "ln_buf.h"
@@ -213,7 +212,7 @@ void cmd_exec(void)
 			ubasic_load_default_scripts();
 			break;
 		case 4:
-			USB_enter_bootloader();
+			
 			break;
 		case 5:
 			rSlot.slot = 0;

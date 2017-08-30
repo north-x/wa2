@@ -280,6 +280,12 @@
     <Compile Include="sys\utils.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="uart.c">
+      <SubType>compile</SubType>
+    </Compile>
+    <Compile Include="uart.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="ubasic\basic_cfg.h">
       <SubType>compile</SubType>
     </Compile>
@@ -301,27 +307,6 @@
     <Compile Include="ubasic\ubasic.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="usb\cdc_standard.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="usb\usb.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="usb\usb_requests.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="usb\usb_standard.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="usb\usb_xmega.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="usb\usb_xmega.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="usb\usb_xmega_internal.h">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="usb_support.c">
       <SubType>compile</SubType>
     </Compile>
@@ -336,7 +321,6 @@
     <Folder Include="dev" />
     <Folder Include="loconet" />
     <Folder Include="ubasic" />
-    <Folder Include="usb" />
     <Folder Include="sys" />
   </ItemGroup>
   <Import Project="$(AVRSTUDIO_EXE_PATH)\\Vs\\Compiler.targets" />

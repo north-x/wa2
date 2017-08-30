@@ -40,7 +40,6 @@
 #include "wa2.h"
 #include "usb_support.h"
 #include "ln_support.h"
-#include "usb/usb.h"
 #include "port.h"
 #include "servo.h"
 
