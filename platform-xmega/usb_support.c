@@ -66,6 +66,7 @@ PROCESS_THREAD(usb_process, ev, data)
 {
 	lnMsg *LnPacket;
 	uint16_t rec;
+	static uint8_t masterEnabled = 0;
 	
 	PROCESS_BEGIN();
 	
@@ -75,6 +76,11 @@ PROCESS_THREAD(usb_process, ev, data)
 		
 		if (LnPacket)
 		{
+			if (!masterEnabled)
+			{
+				enableLocoNetMaster(1);
+				masterEnabled = 1;
+			}
 			sendLocoNetPacket(LnPacket);
 		}
 		
