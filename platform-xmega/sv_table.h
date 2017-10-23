@@ -47,6 +47,7 @@
 #include <avr/wdt.h>
 #include <string.h>
 #include "ln_buf.h"
+#include "ln_support.h"
 
 void cmd_exec(void);
 void tse_update_page_read(void);
@@ -56,12 +57,6 @@ void dimm_target_parameter_update(void);
 void dimm_delta_parameter_update(void);
 void ln_update_threshold(void);
 
-extern uint8_t ln_gpio_status;
-extern uint8_t ln_gpio_status;
-extern uint8_t ln_gpio_status_pre;
-extern uint8_t ln_gpio_status_tx;
-extern uint8_t ln_gpio_opcode_tx;
-extern uint8_t ln_gpio_opcode_tx2;
 extern uint8_t ln_wdt_counter;
 extern LnBuf LnBuffer;
 extern rwSlotDataMsg rSlot;
@@ -93,8 +88,8 @@ SV(8, "WDT Reset Counter", ln_wdt_counter, 0)
 SV(9, "Rx Error Counter", LnBuffer.Stats.RxErrors, 0)
 /*SV(8, "User Register 1", tse_user_reg1, 0)
 SV(9, "User Register 2", tse_user_reg2, 0)*/
-SV(10, "LN GPIO Status", ln_gpio_status, 0)
-SV(11, "LN GPIO Status Transmit", ln_gpio_status_tx, 0)
+SV(10, "LN GPIO Status", ln_gpio_status[0], 0)
+SV(11, "LN GPIO Status Transmit", ln_gpio_tx[0], 0)
 SV(12, "LN Threshold Voltage x10", eeprom.ln_threshold, ln_update_threshold)
 SV(13, "Port Digital Output Select", port_do_select, 0)
 SV(14, "Port Digital Output Cmd", port_do, 0)
@@ -189,8 +184,8 @@ SV(106, "Servo 2 Delta", servo[1].time_delta, 0)
 SV_CONST(107, "IR Read Parameter Address", 107)
 SV_CONST(108, "IR Read Parameter", 108)
 SV_CONST(109, "IR Read Parameter Value", 109)
-SV(110, "LN GPIO Opcode Transmit L", ln_gpio_opcode_tx, 0)
-SV(111, "LN GPIO Opcode Transmit H", ln_gpio_opcode_tx2, 0)
+SV(110, "LN GPIO Dir L", ln_gpio_dir[0], 0)
+SV(111, "LN GPIO Dir H", ln_gpio_dir[1], 0)
 SV_TABLE_END()
 
 

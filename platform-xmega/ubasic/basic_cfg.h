@@ -342,11 +342,7 @@
 	#ifdef BASIC_USER_EXTENSION_INCLUDES
 		#include "port.h"
 		#include "servo.h"
-		extern uint8_t ln_gpio_status;
-		extern uint8_t ln_gpio_status_pre;
-		extern uint8_t ln_gpio_status_tx;
-		extern uint8_t ln_gpio_opcode_tx;
-		extern uint8_t ln_gpio_opcode_tx2;
+		#include "ln_support.h"
 	#endif
 	
 	#ifdef BASIC_USER_EXTENSIONS
@@ -363,8 +359,8 @@
 		USER_VARIABLE 	(SYSTICK,			"systick",  systick, 1					)
 	
 		USER_ARRAY			(ADC_ARRAY,		"adc",      adc,    			8	) */
-USER_VARIABLE(1, "ln_gpio_status", ln_gpio_status, 1)
-USER_VARIABLE(2, "ln_gpio_status_tx", ln_gpio_status_tx, 1)
+USER_VARIABLE(1, "ln_gpio_status", ln_gpio_status[0], 1)
+USER_VARIABLE(2, "ln_gpio_status_tx", ln_gpio_dir[0], 1)
 USER_VARIABLE(3, "relay_request", relay_request, 1)
 USER_VARIABLE(4, "servo1_time_delta", servo[0].time_delta, 1)
 USER_VARIABLE(5, "servo1_setpoint", servo[0].position_setpoint, 1)
@@ -376,8 +372,8 @@ USER_VARIABLE(10, "port_di", port_di, 1)
 USER_VARIABLE(11, "port_do", port_do, 1)
 USER_VARIABLE(12, "port_do_select", port_do_select, 1)
 USER_VARIABLE(13, "port_mode", port_mode, 1)
-USER_VARIABLE(14, "ln_gpio_opcode_tx", ln_gpio_opcode_tx, 1)
-USER_VARIABLE(15, "ln_gpio_opcode_tx2", ln_gpio_opcode_tx2, 1)
+USER_VARIABLE(14, "ln_gpio_opcode_tx", ln_gpio_tx[0], 1)
+USER_VARIABLE(15, "ln_gpio_opcode_tx2", ln_gpio_tx[1], 1)
 USER_VARIABLE(16, "pwm_port1_target", pwm_port[0].dimm_target, 1)
 USER_VARIABLE(17, "pwm_port2_target", pwm_port[1].dimm_target, 1)
 USER_VARIABLE(18, "pwm_port3_target", pwm_port[2].dimm_target, 1)

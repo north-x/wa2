@@ -39,6 +39,7 @@
 #include "port.h"
 #include "platform.h"
 #include "ubasic.h"
+#include "ln_support.h"
 
 struct t_eeprom_storage eeprom;
 struct t_eeprom_storage eeprom_shadow;
@@ -87,7 +88,7 @@ struct t_eeprom_storage eeprom_default = {
 
 struct t_eeprom_status eeprom_status_default = {
 	.flags = 0,
-	.ln_gpio_status = 0,
+	.ln_gpio_status = { 0, 0 },
 	.relay_request = 0,
 	.servo_position = { 127, 127 }
 	};

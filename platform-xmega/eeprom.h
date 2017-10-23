@@ -58,7 +58,7 @@ typedef struct t_eeprom_storage {
 
 typedef struct t_eeprom_status {
 	uint8_t flags;
-	uint8_t ln_gpio_status;
+	uint8_t ln_gpio_status[2];
 	uint8_t relay_request;
 	uint8_t servo_position[2];
 } t_eeprom_status;

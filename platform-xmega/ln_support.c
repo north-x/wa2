@@ -50,17 +50,17 @@ static struct etimer ln_ack_timer;
 static struct etimer ln_wdt_timer;
 
 LnBuf LnBuffer;
-uint8_t ln_gpio_status;
-uint8_t ln_gpio_status_pre;
-uint8_t ln_gpio_status_ack;
-uint8_t ln_gpio_status_tx;
-uint8_t ln_gpio_ack_tx;
-uint8_t ln_gpio_opcode_tx;
-uint8_t ln_gpio_opcode_tx2;
+
+uint8_t ln_gpio_dir[LN_GPIO_BW];
+uint8_t ln_gpio_tx[LN_GPIO_BW];
+uint8_t ln_gpio_tx_ack[LN_GPIO_BW];
+uint8_t ln_gpio_status[LN_GPIO_BW];
+uint8_t ln_gpio_status_pre[LN_GPIO_BW];
+uint8_t ln_gpio_status_ack[LN_GPIO_BW];
+uint8_t ln_gpio_ack_counter[LN_GPIO_CH_COUNT];
+uint8_t ln_gpio_ack_count;
 uint8_t ln_wdt_flag;
 uint8_t ln_wdt_counter __attribute__ ((section (".noinit")));
-uint8_t ln_gpio_ack_counter[8];
-uint8_t ln_gpio_ack_count;
 
 extern uint16_t deviceID;
 rwSlotDataMsg rSlot;
@@ -133,7 +133,7 @@ PROCESS_THREAD(ln_wdt_process, ev, data)
 
 PROCESS_THREAD(ln_ack_process, ev, data)
 {
-	static uint8_t current_bit = 0;
+	static uint8_t current_channel = 0;
 	
 	PROCESS_BEGIN();
 	
@@ -144,29 +144,27 @@ PROCESS_THREAD(ln_ack_process, ev, data)
 		PROCESS_YIELD();
 		etimer_reset(&ln_ack_timer);
 		
-		if (current_bit>7)
-			current_bit = 0;
-		
-		if (ln_gpio_status_ack&(1<<current_bit))
-		{
-			if (ln_gpio_ack_counter[current_bit]>0)
-			{
-				// Re transmit
-				ln_gpio_status_tx |= (1<<current_bit);
+		if (current_channel>=LN_GPIO_CH_COUNT)
+			current_channel = 0;
 
-				// Decrement ACK counter if not set to infinite (255)
-				if (ln_gpio_ack_counter[current_bit]<255)
+		if (ln_gpio_status_ack[current_channel/8]&(1<<(current_channel%8)))
+		{
+			if (ln_gpio_ack_counter[current_channel]>0)
+			{
+				ln_gpio_tx[current_channel/8] |= (1<<(current_channel%8));
+				
+				if (ln_gpio_ack_counter[current_channel]<255)
 				{
-					ln_gpio_ack_counter[current_bit]--;
+					ln_gpio_ack_counter[current_channel]--;
 				}
 			}
 			else
 			{
-				ln_gpio_status_ack &= ~(1<<current_bit);
+				ln_gpio_status_ack[current_channel/8] &= ~(1<<(current_channel%8));
 			}
 		}
 		
-		current_bit++;
+		current_channel++;
 	}
 	
 	PROCESS_END();
@@ -175,19 +173,27 @@ PROCESS_THREAD(ln_ack_process, ev, data)
 PROCESS_THREAD(ln_process, ev, data)
 {
 	lnMsg *LnPacket;
+	uint8_t index;
 	
 	PROCESS_BEGIN();
 	
 	// Initialization
-	ln_gpio_status = eeprom_status.ln_gpio_status;
-	ln_gpio_status_pre = eeprom_status.ln_gpio_status;
+	for (index=0;index<LN_GPIO_BW;index++)
+	{
+		ln_gpio_status[index] = eeprom_status.ln_gpio_status[index];
+		ln_gpio_status_pre[index] = eeprom_status.ln_gpio_status[index];
+	}
+	
 	rSlot.slot = 0xFF;
 	
 	while (1)
 	{
 		PROCESS_PAUSE();
 		
-		eeprom_status.ln_gpio_status = ln_gpio_status;
+		for (index=0;index<LN_GPIO_BW;index++)
+		{
+			eeprom_status.ln_gpio_status[index] = ln_gpio_status[index];
+		}
 		
 		doSVDeferredProcessing();
 		
@@ -207,7 +213,10 @@ PROCESS_THREAD(ln_process, ev, data)
 			if ((LnPacket->sz.command == OPC_GPON))
 			{
 				// Force transmission of current state
-				ln_gpio_status_tx = 0xFF;
+				for (index=0;index<LN_GPIO_BW;index++)
+				{
+					ln_gpio_tx[index] = ~ln_gpio_dir[index];
+				}
 			}
 			/*
 			else if (BootloaderParseMessage(LnPacket)==1)
@@ -230,67 +239,96 @@ PROCESS_THREAD(ln_process, ev, data)
 void ln_gpio_process_tx(void)
 {
 	uint8_t *msg;
-	static uint8_t current_bit = 0;
+	static uint8_t current_channel = 0;
 	
-	if (current_bit>7)
-		current_bit = 0;
-	
-	if (((ln_gpio_status^ln_gpio_status_pre)|ln_gpio_status_tx) & (1<<current_bit))
+	if (current_channel>=LN_GPIO_CH_COUNT)
+		current_channel = 0;
+		
+	if (((ln_gpio_status[current_channel/8]^ln_gpio_status_pre[current_channel/8])|ln_gpio_tx[current_channel/8])&(1<<(current_channel%8)))
 	{
-		if (ln_gpio_status&(1<<current_bit))
+		// Check direction
+		if (ln_gpio_dir[current_channel/8]&(1<<(current_channel%8)))
 		{
-			if (ln_create_message(eeprom.ln_gpio_opcode[current_bit*2+1]))
+			// Transmit opcode if output (dir=1)
+			if (ln_gpio_status[current_channel/8]&(1<<(current_channel%8)))
 			{
-				ln_gpio_status_pre |= (1<<current_bit);
-				ln_gpio_status_tx &= ~(1<<current_bit);
-				ln_gpio_status_ack |= (1<<current_bit);			
-				ln_gpio_ack_counter[current_bit] = ln_gpio_ack_count;
-			}					
+				msg = eeprom.ln_gpio_opcode[current_channel*2+1];
+				if (sendLocoNet4BytePacket(msg[0]|(1<<7), msg[1], msg[2])==LN_DONE)
+				{
+					ln_gpio_status_pre[current_channel/8] |= (1<<(current_channel%8));
+					ln_gpio_tx[current_channel/8] &= ~(1<<(current_channel%8));
+					if ((ln_gpio_status_ack[current_channel/8]&(1<<(current_channel%8)))==0)
+					{
+						ln_gpio_status_ack[current_channel/8] |= (1<<(current_channel%8));
+						ln_gpio_ack_counter[current_channel] = ln_gpio_ack_count;
+					}
+				}
+			}
+			else
+			{
+				msg = eeprom.ln_gpio_opcode[current_channel*2];
+				if (sendLocoNet4BytePacket(msg[0]|(1<<7), msg[1], msg[2])==LN_DONE)
+				{
+					ln_gpio_status_pre[current_channel/8] &= ~(1<<(current_channel%8));
+					ln_gpio_tx[current_channel/8] &= ~(1<<(current_channel%8));
+					if ((ln_gpio_status_ack[current_channel/8]&(1<<(current_channel%8)))==0)
+					{
+						ln_gpio_status_ack[current_channel/8] |= (1<<(current_channel%8));
+						ln_gpio_ack_counter[current_channel] = ln_gpio_ack_count;
+					}
+				}
+			}
 		}
 		else
 		{
-			if (ln_create_message(eeprom.ln_gpio_opcode[current_bit*2]))
+			// Transmit status if input (dir=0)
+			if (ln_gpio_status[current_channel/8]&(1<<(current_channel%8)))
 			{
-				ln_gpio_status_pre &= ~(1<<current_bit);
-				ln_gpio_status_tx &= ~(1<<current_bit);
-				ln_gpio_status_ack |= (1<<current_bit);				
-				ln_gpio_ack_counter[current_bit] = ln_gpio_ack_count;
+				if (ln_create_message(eeprom.ln_gpio_opcode[current_channel*2+1]))
+				{
+					ln_gpio_status_pre[current_channel/8] |= (1<<(current_channel%8));
+					ln_gpio_tx[current_channel/8] &= ~(1<<(current_channel%8));
+					if ((ln_gpio_status_ack[current_channel/8]&(1<<(current_channel%8)))==0)
+					{
+						ln_gpio_status_ack[current_channel/8] |= (1<<(current_channel%8));
+						ln_gpio_ack_counter[current_channel] = ln_gpio_ack_count;
+					}
+				}
+			}
+			else
+			{
+				if (ln_create_message(eeprom.ln_gpio_opcode[current_channel*2]))
+				{
+					ln_gpio_status_pre[current_channel/8] &= ~(1<<(current_channel%8));
+					ln_gpio_tx[current_channel/8] &= ~(1<<(current_channel%8));
+					if ((ln_gpio_status_ack[current_channel/8]&(1<<(current_channel%8)))==0)
+					{
+						ln_gpio_status_ack[current_channel/8] |= (1<<(current_channel%8));
+						ln_gpio_ack_counter[current_channel] = ln_gpio_ack_count;
+					}
+				}
 			}
 		}
 	}
-	else if (ln_gpio_ack_tx&(1<<current_bit))
+	else if (ln_gpio_tx_ack[current_channel/8]&(1<<(current_channel%8)))
 	{
-		if (ln_gpio_status&(1<<current_bit))
+		if (ln_gpio_status[current_channel/8]&(1<<(current_channel%8)))
 		{
-			if (ln_create_message_ack(eeprom.ln_gpio_opcode[current_bit*2+1]))
+			if (ln_create_message_ack(eeprom.ln_gpio_opcode[current_channel*2+1]))
 			{
-				ln_gpio_ack_tx &= ~(1<<current_bit);
+				ln_gpio_tx_ack[current_channel/8] &= ~(1<<(current_channel%8));
 			}
 		}
 		else
 		{
-			if (ln_create_message_ack(eeprom.ln_gpio_opcode[current_bit*2]))
+			if (ln_create_message_ack(eeprom.ln_gpio_opcode[current_channel*2]))
 			{
-				ln_gpio_ack_tx &= ~(1<<current_bit);
+				ln_gpio_tx_ack[current_channel/8] &= ~(1<<(current_channel%8));
 			}
 		}
 	}
 	
-	if (ln_gpio_opcode_tx&(1<<current_bit))
-	{
-		msg = eeprom.ln_gpio_opcode[current_bit];
-		if (sendLocoNet4BytePacket(msg[0]|(1<<7), msg[1], msg[2])==LN_DONE)
-			ln_gpio_opcode_tx &= ~(1<<current_bit);
-	}
-
-	if (ln_gpio_opcode_tx2&(1<<current_bit))
-	{
-		msg = eeprom.ln_gpio_opcode[current_bit+8];
-		if (sendLocoNet4BytePacket(msg[0]|(1<<7), msg[1], msg[2])==LN_DONE)
-			ln_gpio_opcode_tx2 &= ~(1<<current_bit);
-	}
-	
-	current_bit++;
+	current_channel++;
 }
 
 uint8_t ln_create_message(uint8_t *msg)
@@ -335,16 +373,20 @@ uint8_t ln_create_message_ack(uint8_t *msg)
 void ln_gpio_process_rx(lnMsg *LnPacket)
 {
 	uint8_t index;
-	uint8_t ack;
+	uint8_t ack, cmd;
 	
 	if (!LnPacket)
-		return;
+	return;
 	
 	if (getLnMsgSize(LnPacket)>4)
 		return;
 	
-	for (index=0;index<16;index++)
-	{	
+	
+	for (index=0;index<(2*LN_GPIO_CH_COUNT);index++)
+	{
+		// 1. Find a matching opcode
+		// - either a direct match, or
+		// - by matching a switch report/request pair
 		if ((LnPacket->sr.command==eeprom.ln_gpio_opcode[index][0])
 		|| ((LnPacket->sr.command==OPC_SW_REP) && (eeprom.ln_gpio_opcode[index][0]==OPC_SW_REQ)))
 		{
@@ -353,36 +395,32 @@ void ln_gpio_process_rx(lnMsg *LnPacket)
 		else
 			continue;
 		
+		// 2. Check first address byte
 		if (LnPacket->srq.sw1!=eeprom.ln_gpio_opcode[index][1])
 			continue;
 			
 		ack = 0;
+		cmd = 0;
 		
+		// 3. Handle the opcode
 		switch (LnPacket->sr.command)
 		{
 			case OPC_SW_REQ:
 				if ((LnPacket->srq.sw2&(~(1<<6)))!=(eeprom.ln_gpio_opcode[index][2]&(~(1<<6))))
 					continue;
-					
+				
 				if ((LnPacket->srq.sw2&(1<<6))==0)
 				{
-					// Command
-					
-				}
-				else
-				{
-					// Ack
-					ack = 1;
-				}
-				break;
-			case OPC_INPUT_REP:
-				if ((LnPacket->srq.sw2&(~(1<<6)))!=(eeprom.ln_gpio_opcode[index][2]&(~(1<<6))))
-					continue;
-					
-				if ((LnPacket->srq.sw2&(1<<6))!=0)
-				{
-					// Command
-					
+					// Ack Command if direction input (==0)
+					if ((ln_gpio_dir[index/16]&(1<<((index/2)%8)))==0)
+					{
+						cmd = 1;
+						ack = 1;
+					}
+					else
+					{
+						cmd = 1;
+					}
 				}
 				else
 				{
@@ -391,21 +429,67 @@ void ln_gpio_process_rx(lnMsg *LnPacket)
 				}
 				break;
 			case OPC_SW_REP:
-				if ((LnPacket->srq.sw2&0xF)!=(eeprom.ln_gpio_opcode[index][2]&0xF))
-					continue;
-					
-				if ((LnPacket->srq.sw2&(1<<6))==0)
+				if (eeprom.ln_gpio_opcode[index][0]==OPC_SW_REQ)
 				{
-					// Ack
-					ack = 1;
-					ln_gpio_status_ack &= ~(1<<(index/2));
+					if ((LnPacket->srq.sw2&0xF)!=(eeprom.ln_gpio_opcode[index][2]&0xF))
+					{
+						continue;
+					}
+				
+					// We received the ACK, so we can clear the flag and stop transmitting
+					if ((LnPacket->srq.sw2&(1<<6))==0)
+					{
+						ack = 1;
+					}
 				}
 				else
 				{
-					// Command					
+					if ((LnPacket->srq.sw2&(~(1<<6)))!=(eeprom.ln_gpio_opcode[index][2]&(~(1<<6))))
+						continue;
+					
+					if ((LnPacket->srq.sw2&(1<<6))!=0)
+					{
+						// Ack Command if direction input (==0)
+						if ((ln_gpio_dir[index/16]&(1<<((index/2)%8)))==0)
+						{
+							cmd = 1;
+							ack = 1;
+						}
+						else
+						{
+							cmd = 1;
+						}
+					}
+					else
+					{
+						// Ack
+						ack = 1;
+					}
+				}	
+				break;
+			case OPC_INPUT_REP:
+				if ((LnPacket->srq.sw2&(~(1<<6)))!=(eeprom.ln_gpio_opcode[index][2]&(~(1<<6))))
+					continue;
+					
+				if ((LnPacket->srq.sw2&(1<<6))!=0)
+				{
+					// Ack Command if direction input (==0)
+					if ((ln_gpio_dir[index/16]&(1<<((index/2)%8)))==0)
+					{
+						cmd = 1;
+						ack = 1;
+					}
+					else
+					{
+						cmd = 1;
+					}
+					
 				}
-				
-				continue;
+				else
+				{
+					// Ack
+					ack = 1;
+				}
 				break;
 			default:
 				if (LnPacket->srq.sw2!=eeprom.ln_gpio_opcode[index][2])
@@ -413,24 +497,32 @@ void ln_gpio_process_rx(lnMsg *LnPacket)
 		}
 		
 		// We have a match, now set or clear the status
-		if ((index%2)==0)
+		if (cmd)
 		{
-			ln_gpio_status &= ~(1<<(index/2));
-			ln_gpio_status_pre &= ~(1<<(index/2));
-		}
-		else
-		{
-			ln_gpio_status |= (1<<(index/2));
-			ln_gpio_status_pre |= (1<<(index/2));
-		}
+			if ((index%2)==0)
+			{
+				ln_gpio_status[index/16] &= ~(1<<((index/2)%8));
+				ln_gpio_status_pre[index/16] &= ~(1<<((index/2)%8));
+			}
+			else
+			{
+				ln_gpio_status[index/16] |= (1<<((index/2)%8));
+				ln_gpio_status_pre[index/16] |= (1<<((index/2)%8));
+			}
 		
-		if (ack)
-		{
-			ln_gpio_status_ack &= ~(1<<(index/2));
-			//ln_gpio_status_tx &= ~(1<<(index/2));
+			if (ack && (ln_gpio_ack_count>0))
+			{
+				ln_gpio_tx_ack[index/16] |= (1<<((index/2)%8));
+			}
 		}
 		else
-			ln_gpio_ack_tx |= (1<<(index/2));
+		{
+			if (ack)
+			{
+				ln_gpio_status_ack[index/16] &= ~(1<<((index/2)%8));
+			}
+		}
+
 	}
 }
 
@@ -538,15 +630,15 @@ void ln_throttle_process(lnMsg *LnPacket)
 						// F0: 0 -> Servo 1 / 1 -> Servo 2
 						if (LnPacket->ldf.dirf&(1<<4))
 						{
-							ln_gpio_status |= (1<<1);
-							ln_gpio_status_pre |= (1<<1);
+							ln_gpio_status[0] |= (1<<1);
+							ln_gpio_status_pre[0] |= (1<<1);
 							servo_act = &servo[1].max;
 							servo_speed = &servo[1].time_ratio;
 						}
 						else
 						{
-							ln_gpio_status |= (1<<0);
-							ln_gpio_status_pre |= (1<<0);
+							ln_gpio_status[0] |= (1<<0);
+							ln_gpio_status_pre[0] |= (1<<0);
 							servo_act = &servo[0].max;
 							servo_speed = &servo[0].time_ratio;
 						}
@@ -556,15 +648,15 @@ void ln_throttle_process(lnMsg *LnPacket)
 						// F0: 0 -> Servo 1 / 1 -> Servo 2
 						if (LnPacket->ldf.dirf&(1<<4))
 						{
-							ln_gpio_status &= ~(1<<1);
-							ln_gpio_status_pre &= ~(1<<1);
+							ln_gpio_status[0] &= ~(1<<1);
+							ln_gpio_status_pre[0] &= ~(1<<1);
 							servo_act = &servo[1].min;
 							servo_speed = &servo[1].time_ratio;
 						}
 						else
 						{
-							ln_gpio_status &= ~(1<<0);
-							ln_gpio_status_pre &= ~(1<<0);
+							ln_gpio_status[0] &= ~(1<<0);
+							ln_gpio_status_pre[0] &= ~(1<<0);
 							servo_act = &servo[0].min;
 							servo_speed = &servo[0].time_ratio;
 						}
@@ -715,6 +807,14 @@ void ln_throttle_process(lnMsg *LnPacket)
 
 void ln_create_opcode(uint8_t *buf, uint8_t opc, uint16_t addr)
 {
+	if (addr==0)
+	{
+		buf[0] = 0;
+		buf[3] = 0;
+		
+		return;
+	}
+	
 	switch (opc)
 	{
 		case OPC_SW_REQ:

@@ -34,6 +34,18 @@
 
 #include "loconet.h"
 
+#define LN_GPIO_CH_COUNT	16
+#define LN_GPIO_BW		((LN_GPIO_CH_COUNT-1)/8L)+1
+
+extern uint8_t ln_gpio_dir[LN_GPIO_BW];
+extern uint8_t ln_gpio_tx[LN_GPIO_BW];
+extern uint8_t ln_gpio_tx_ack[LN_GPIO_BW];
+extern uint8_t ln_gpio_status[LN_GPIO_BW];
+extern uint8_t ln_gpio_status_pre[LN_GPIO_BW];
+extern uint8_t ln_gpio_status_ack[LN_GPIO_BW];
+extern uint8_t ln_gpio_ack_count;
+extern uint8_t ln_wdt_counter;
+
 void loconet_init(void);
 uint8_t ln_create_message(uint8_t *msg);
 uint8_t ln_create_message_ack(uint8_t *msg);
