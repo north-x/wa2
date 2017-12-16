@@ -70,7 +70,6 @@ void init(void)
 	servo_init();
 	
 	wa2_update_configuration();
-	ubasic_start();
 	
 	PMIC.CTRL = PMIC_LOLVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm;
 	sei();

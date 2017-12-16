@@ -37,8 +37,6 @@
 #include "wa2.h"
 #include "eeprom.h"
 #include "port.h"
-#include "platform.h"
-#include "ubasic.h"
 #include "ln_support.h"
 
 struct t_eeprom_storage eeprom;
@@ -114,8 +112,6 @@ void eeprom_load_defaults(void)
 {
 	memcpy(&eeprom, &eeprom_default, sizeof(t_eeprom_storage));
 	memcpy(&eeprom_status, &eeprom_status_default, sizeof(t_eeprom_status));
-	ubasic_load_default_scripts();
-	ubasic_save_scripts();
 }
 
 void eeprom_sync_storage(void)

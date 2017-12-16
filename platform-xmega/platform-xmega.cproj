@@ -280,27 +280,6 @@
     <Compile Include="sys\utils.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="ubasic\basic_cfg.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\basic_interface.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\platform.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\tokenizer.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\tokenizer.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\ubasic.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\ubasic.h">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="usb\cdc_standard.h">
       <SubType>compile</SubType>
     </Compile>
@@ -335,7 +314,6 @@
   <ItemGroup>
     <Folder Include="dev" />
     <Folder Include="loconet" />
-    <Folder Include="ubasic" />
     <Folder Include="usb" />
     <Folder Include="sys" />
   </ItemGroup>
