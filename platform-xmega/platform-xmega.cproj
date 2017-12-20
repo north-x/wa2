@@ -142,6 +142,9 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="config.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="contiki-conf.h">
       <SubType>compile</SubType>
     </Compile>
@@ -172,9 +175,9 @@
     <Compile Include="eeprom.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="ln_hwtx_hwrx_uart.c">
+    <None Include="ln_hwtx_hwrx_uart.c">
       <SubType>compile</SubType>
-    </Compile>
+    </None>
     <Compile Include="ln_support.c">
       <SubType>compile</SubType>
     </Compile>

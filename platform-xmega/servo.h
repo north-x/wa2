@@ -29,6 +29,51 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */ 
 
+#ifdef CONFIGURATION
+
+#ifdef SV_CFG
+SV_MSB(20, "Servo 1 Minimum H", eeprom.servo_min[0], servo_update_configuration)
+SV_MSB(21, "Servo 1 Maximum H", eeprom.servo_max[0], servo_update_configuration)
+SV(22, "Servo 1 Speed", eeprom.servo_time_ratio[0], servo_update_configuration)
+SV_LSB(23, "Servo 1 Minimum L", eeprom.servo_min[0], servo_update_configuration)
+SV_LSB(24, "Servo 1 Maximum L", eeprom.servo_max[0], servo_update_configuration)
+SV_MSB(25, "Servo 2 Minimum H", eeprom.servo_min[1], servo_update_configuration)
+SV_MSB(26, "Servo 2 Maximum H", eeprom.servo_max[1], servo_update_configuration)
+SV(27, "Servo 2 Speed", eeprom.servo_time_ratio[1], servo_update_configuration)
+SV_LSB(28, "Servo 2 Minimum L", eeprom.servo_min[1], servo_update_configuration)
+SV_LSB(29, "Servo 2 Maximum L", eeprom.servo_max[1], servo_update_configuration)
+SV_LSB(30, "Standby Delay L", eeprom.servo_timeout, 0)
+SV_MSB(31, "Standby Delay H", eeprom.servo_timeout, 0)
+SV_LSB(32, "Startup Delay L", eeprom.servo_startup_delay, 0)
+SV_MSB(33, "Startup Delay H", eeprom.servo_startup_delay, 0)
+SV(34, "Servo Start Method", eeprom.servo_start_method, servo_mode_update)
+#endif
+
+#ifdef EEPROM_CFG
+
+uint16_t servo_startup_delay;
+uint16_t servo_timeout;
+uint8_t servo_start_method;
+uint16_t servo_min[2];
+uint16_t servo_max[2];
+uint8_t servo_time_ratio[2];
+
+#endif
+
+#ifdef EEPROM_DEFAULT
+.servo_startup_delay = 80,
+.servo_timeout = 0,
+.servo_start_method = 1,
+.servo_min = {32767, 32767},
+.servo_max = {32768, 32768},
+.servo_time_ratio = {16, 16},
+#endif
+
+#ifdef AUTOSTART_CFG
+servo_process,
+#endif
+#else
+
 #ifndef __SERVO_HP_H
 #define __SERVO_HP_H
 
@@ -116,3 +161,4 @@ void servo_init(void);
 
 #endif
 
+#endif 

@@ -55,6 +55,7 @@ struct t_eeprom_storage eeprom_default = {
 			.configA = (0<<WA2_CONF_PWM_OUTPUTS_ENABLE)|(0<<WA2_CONF_PWM_CHANNEL7_ENABLE)|(1<<WA2_CONF_INPUTS_PULLUP_ENABLE)|(1<<WA2_CONF_SERVO_ENABLE_PWM_A),
 			.configB = 0,
 			.ln_threshold = 20,
+			/*
 			.servo_startup_delay = 80,
 			.servo_timeout = 0,
 			.servo_start_method = 1,
@@ -65,7 +66,7 @@ struct t_eeprom_storage eeprom_default = {
 			.servo_min = {32767, 32767},
 			.servo_max = {32768, 32768},
 #endif
-			.servo_time_ratio = {16, 16},
+			.servo_time_ratio = {16, 16},*/
 			.ln_gpio_opcode =
 			{{ 0xB0, 0x01, 0x20},
 			 { 0xB0, 0x01, 0x00},
@@ -83,6 +84,9 @@ struct t_eeprom_storage eeprom_default = {
 			 { 0xB0, 0x06, 0x00},
 			 { 0, 0, 0},
 			 { 0, 0, 0}},
+#define EEPROM_DEFAULT
+#include "config.h"
+#undef EEPROM_DEFAULT
         };
 
 struct t_eeprom_status eeprom_status_default = {

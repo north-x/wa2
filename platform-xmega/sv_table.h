@@ -103,21 +103,7 @@ SV(16, "PWM Port Select", dimm_parameter_select, 0)
 SV(17, "PWM Port Target", dimm_target_temp, dimm_target_parameter_update)
 SV(18, "PWM Port Delta", dimm_delta_temp, dimm_delta_parameter_update)
 SV(19, "Relay Command", relay_request, 0)
-SV_MSB(20, "Servo 1 Minimum H", eeprom.servo_min[0], servo_update_configuration)
-SV_MSB(21, "Servo 1 Maximum H", eeprom.servo_max[0], servo_update_configuration)
-SV(22, "Servo 1 Speed", eeprom.servo_time_ratio[0], servo_update_configuration)
-SV_LSB(23, "Servo 1 Minimum L", eeprom.servo_min[0], servo_update_configuration)
-SV_LSB(24, "Servo 1 Maximum L", eeprom.servo_max[0], servo_update_configuration)
-SV_MSB(25, "Servo 2 Minimum H", eeprom.servo_min[1], servo_update_configuration)
-SV_MSB(26, "Servo 2 Maximum H", eeprom.servo_max[1], servo_update_configuration)
-SV(27, "Servo 2 Speed", eeprom.servo_time_ratio[1], servo_update_configuration)
-SV_LSB(28, "Servo 2 Minimum L", eeprom.servo_min[1], servo_update_configuration)
-SV_LSB(29, "Servo 2 Maximum L", eeprom.servo_max[1], servo_update_configuration)
-SV_LSB(30, "Standby Delay L", eeprom.servo_timeout, 0)
-SV_MSB(31, "Standby Delay H", eeprom.servo_timeout, 0)
-SV_LSB(32, "Startup Delay L", eeprom.servo_startup_delay, 0)
-SV_MSB(33, "Startup Delay H", eeprom.servo_startup_delay, 0)
-SV(34, "Servo Start Method", eeprom.servo_start_method, servo_mode_update)
+
 SV_LSB(35, "UBasic Status", ubasic_script_status, 0)
 SV(36, "UBasic Autostart", eeprom.ubasic_autostart, 0)
 SV(41, "LN GPIO 1 On Opcode 1", eeprom.ln_gpio_opcode[0][0], 0)
@@ -191,6 +177,11 @@ SV_CONST(108, "IR Read Parameter", 108)
 SV_CONST(109, "IR Read Parameter Value", 109)
 SV(110, "LN GPIO Opcode Transmit L", ln_gpio_opcode_tx, 0)
 SV(111, "LN GPIO Opcode Transmit H", ln_gpio_opcode_tx2, 0)
+
+#define SV_CFG
+#include "config.h"
+#undef SV_CFG
+
 SV_TABLE_END()
 
 
