@@ -44,24 +44,16 @@ typedef struct t_eeprom_storage {
 	uint16_t sv_serial_number;
 	uint16_t sv_destination_id;
 	uint8_t ubasic_autostart;
-	uint8_t configA;
-	uint8_t configB;
 #define EEPROM_CFG
-#define EEPROM_VAR(type,name,len,...) type name[len];
-#define EEPROM_ARR(type,name,len,...) type name[len];
 #include "config.h"
-#undef EEPROM_VAR
-#undef EEPROM_ARR
 #undef EEPROM_CFG
-	uint8_t ln_threshold;
-	uint8_t ln_gpio_opcode[16][3];
 } t_eeprom_storage;
 
 typedef struct t_eeprom_status {
 	uint8_t flags;
-	uint8_t ln_gpio_status;
-	uint8_t relay_request;
-	uint8_t servo_position[2];
+#define EEPROM_STATUS_CFG
+#include "config.h"
+#undef EEPROM_STATUS_CFG
 } t_eeprom_status;
 
 void eeprom_init(void);

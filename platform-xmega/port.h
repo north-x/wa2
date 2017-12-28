@@ -29,6 +29,63 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */ 
 
+/************************************************************************/
+/* Module Configuration                                                 */
+/************************************************************************/
+#ifdef CONFIGURATION
+
+/*
+ *	Autostart List
+ *
+ *	List of all processes that are started automatically on startup
+ *
+ */
+#ifdef AUTOSTART_CFG
+&port_process,
+#endif
+
+/*
+ *	SV Configuration Table
+ *
+ *	List of all configuration variables defined by this module
+ *
+ */
+#ifdef SV_CFG
+SV(6, "Port Configuration Register", eeprom.port_config, port_update_configuration)
+#endif
+
+/*
+ *	EEPROM Configuration Variable Definition
+ */
+#ifdef EEPROM_CFG
+uint8_t port_config;
+#endif
+
+/*
+ *	EEPROM Status Variable Definition
+ */
+#ifdef EEPROM_STATUS_CFG
+uint8_t relay_request;
+#endif
+
+/*
+ *	EEPROM Confiuration Variable Default Configuration
+ */
+#ifdef EEPROM_DEFAULT
+.port_config = (1<<PORT_MODE_PULLUP_ENABLE),
+#endif
+
+/*
+ *	EEPROM Status Variable Default Configuration
+ */
+#ifdef EEPROM_STATUS_DEFAULT
+.relay_request = 0,
+#endif
+
+#else
+/************************************************************************/
+/* Module Header File                                                   */
+/************************************************************************/
 #ifndef PORT_H_
 #define PORT_H_
 
@@ -118,4 +175,7 @@ void relay_process(void);
 void servo_power_enable(void);
 void servo_power_disable(void);
 
+PROCESS_NAME(port_process);
+
 #endif /* PORT_H_ */
+#endif

@@ -29,9 +29,29 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */ 
 
+/************************************************************************/
+/* Module Configuration                                                 */
+/************************************************************************/
 #ifdef CONFIGURATION
 
+/*
+ *	Autostart List
+ *
+ *	List of all processes that are started automatically on startup
+ *
+ */
+#ifdef AUTOSTART_CFG
+&servo_process,
+#endif
+
+/*
+ *	SV Configuration Table
+ *
+ *	List of all configuration variables defined by this module
+ *
+ */
 #ifdef SV_CFG
+SV(7, "Servo Configuration Register", eeprom.servo_config, servo_mode_update)
 SV_MSB(20, "Servo 1 Minimum H", eeprom.servo_min[0], servo_update_configuration)
 SV_MSB(21, "Servo 1 Maximum H", eeprom.servo_max[0], servo_update_configuration)
 SV(22, "Servo 1 Speed", eeprom.servo_time_ratio[0], servo_update_configuration)
@@ -49,18 +69,31 @@ SV_MSB(33, "Startup Delay H", eeprom.servo_startup_delay, 0)
 SV(34, "Servo Start Method", eeprom.servo_start_method, servo_mode_update)
 #endif
 
+/*
+ *	EEPROM Configuration Variable Definition
+ */
 #ifdef EEPROM_CFG
-
+uint8_t servo_config;
 uint16_t servo_startup_delay;
 uint16_t servo_timeout;
 uint8_t servo_start_method;
 uint16_t servo_min[2];
 uint16_t servo_max[2];
 uint8_t servo_time_ratio[2];
-
 #endif
 
+/*
+ *	EEPROM Status Variable Definition
+ */
+#ifdef EEPROM_STATUS_CFG
+uint8_t servo_position[2];
+#endif
+
+/*
+ *	EEPROM Confiuration Variable Default Configuration
+ */
 #ifdef EEPROM_DEFAULT
+.servo_config = (1<<SERVO_STATUS_ENABLE_PWM_A),
 .servo_startup_delay = 80,
 .servo_timeout = 0,
 .servo_start_method = 1,
@@ -69,11 +102,17 @@ uint8_t servo_time_ratio[2];
 .servo_time_ratio = {16, 16},
 #endif
 
-#ifdef AUTOSTART_CFG
-servo_process,
+/*
+ *	EEPROM Status Variable Default Configuration
+ */
+#ifdef EEPROM_STATUS_DEFAULT
+.servo_position = {127, 127},
 #endif
-#else
 
+#else
+/************************************************************************/
+/* Module Header File                                                   */
+/************************************************************************/
 #ifndef __SERVO_HP_H
 #define __SERVO_HP_H
 
@@ -158,6 +197,8 @@ extern volatile uint8_t servo_timer2;
 
 void servo_isr(void);
 void servo_init(void);
+
+PROCESS_NAME(servo_process);
 
 #endif
 

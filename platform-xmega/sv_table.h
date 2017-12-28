@@ -37,12 +37,10 @@
 #ifndef PARAMETER_TABLE_H_
 #define PARAMETER_TABLE_H_
 
-#include "wa2.h"
+#include "config.h"
 #include "eeprom.h"
 #include "platform.h"
 #include "ubasic.h"
-#include "servo.h"
-#include "port.h"
 #include "usb/usb.h"
 #include <avr/wdt.h>
 #include <string.h>
@@ -87,15 +85,6 @@ SV_CONST(2, "SW Version", SOFTWARE_VERSION)
 SV_LSB(3, "Serial Number L", eeprom.sv_serial_number, 0)
 SV_MSB(4, "Serial Number H", eeprom.sv_serial_number, 0)
 SV(5, "Command Register", cmd_register, cmd_exec)
-SV(6, "Config Register 1", eeprom.configA, wa2_update_configuration)
-SV(7, "Config Register 2", eeprom.configB, wa2_update_configuration)
-SV(8, "WDT Reset Counter", ln_wdt_counter, 0)
-SV(9, "Rx Error Counter", LnBuffer.Stats.RxErrors, 0)
-/*SV(8, "User Register 1", tse_user_reg1, 0)
-SV(9, "User Register 2", tse_user_reg2, 0)*/
-SV(10, "LN GPIO Status", ln_gpio_status, 0)
-SV(11, "LN GPIO Status Transmit", ln_gpio_status_tx, 0)
-SV(12, "LN Threshold Voltage x10", eeprom.ln_threshold, ln_update_threshold)
 SV(13, "Port Digital Output Select", port_do_select, 0)
 SV(14, "Port Digital Output Cmd", port_do, 0)
 SV(15, "Port Digital Input Status", port_di, 0)
@@ -106,54 +95,7 @@ SV(19, "Relay Command", relay_request, 0)
 
 SV_LSB(35, "UBasic Status", ubasic_script_status, 0)
 SV(36, "UBasic Autostart", eeprom.ubasic_autostart, 0)
-SV(41, "LN GPIO 1 On Opcode 1", eeprom.ln_gpio_opcode[0][0], 0)
-SV(42, "LN GPIO 1 On Opcode 2", eeprom.ln_gpio_opcode[0][1], 0)
-SV(43, "LN GPIO 1 On Opcode 3", eeprom.ln_gpio_opcode[0][2], 0)
-SV(44, "LN GPIO 1 Off Opcode 1", eeprom.ln_gpio_opcode[1][0], 0)
-SV(45, "LN GPIO 1 Off Opcode 2", eeprom.ln_gpio_opcode[1][1], 0)
-SV(46, "LN GPIO 1 Off Opcode 3", eeprom.ln_gpio_opcode[1][2], 0)
-SV(47, "LN GPIO 2 On Opcode 1", eeprom.ln_gpio_opcode[2][0], 0)
-SV(48, "LN GPIO 2 On Opcode 2", eeprom.ln_gpio_opcode[2][1], 0)
-SV(49, "LN GPIO 2 On Opcode 3", eeprom.ln_gpio_opcode[2][2], 0)
-SV(50, "LN GPIO 2 Off Opcode 1", eeprom.ln_gpio_opcode[3][0], 0)
-SV(51, "LN GPIO 2 Off Opcode 2", eeprom.ln_gpio_opcode[3][1], 0)
-SV(52, "LN GPIO 2 Off Opcode 3", eeprom.ln_gpio_opcode[3][2], 0)
-SV(53, "LN GPIO 3 On Opcode 1", eeprom.ln_gpio_opcode[4][0], 0)
-SV(54, "LN GPIO 3 On Opcode 2", eeprom.ln_gpio_opcode[4][1], 0)
-SV(55, "LN GPIO 3 On Opcode 3", eeprom.ln_gpio_opcode[4][2], 0)
-SV(56, "LN GPIO 3 Off Opcode 1", eeprom.ln_gpio_opcode[5][0], 0)
-SV(57, "LN GPIO 3 Off Opcode 2", eeprom.ln_gpio_opcode[5][1], 0)
-SV(58, "LN GPIO 3 Off Opcode 3", eeprom.ln_gpio_opcode[5][2], 0)
-SV(59, "LN GPIO 4 On Opcode 1", eeprom.ln_gpio_opcode[6][0], 0)
-SV(60, "LN GPIO 4 On Opcode 2", eeprom.ln_gpio_opcode[6][1], 0)
-SV(61, "LN GPIO 4 On Opcode 3", eeprom.ln_gpio_opcode[6][2], 0)
-SV(62, "LN GPIO 4 Off Opcode 1", eeprom.ln_gpio_opcode[7][0], 0)
-SV(63, "LN GPIO 4 Off Opcode 2", eeprom.ln_gpio_opcode[7][1], 0)
-SV(64, "LN GPIO 4 Off Opcode 3", eeprom.ln_gpio_opcode[7][2], 0)
-SV(65, "LN GPIO 5 On Opcode 1", eeprom.ln_gpio_opcode[8][0], 0)
-SV(66, "LN GPIO 5 On Opcode 2", eeprom.ln_gpio_opcode[8][1], 0)
-SV(67, "LN GPIO 5 On Opcode 3", eeprom.ln_gpio_opcode[8][2], 0)
-SV(68, "LN GPIO 5 Off Opcode 1", eeprom.ln_gpio_opcode[9][0], 0)
-SV(69, "LN GPIO 5 Off Opcode 2", eeprom.ln_gpio_opcode[9][1], 0)
-SV(70, "LN GPIO 5 Off Opcode 3", eeprom.ln_gpio_opcode[9][2], 0)
-SV(71, "LN GPIO 6 On Opcode 1", eeprom.ln_gpio_opcode[10][0], 0)
-SV(72, "LN GPIO 6 On Opcode 2", eeprom.ln_gpio_opcode[10][1], 0)
-SV(73, "LN GPIO 6 On Opcode 3", eeprom.ln_gpio_opcode[10][2], 0)
-SV(74, "LN GPIO 6 Off Opcode 1", eeprom.ln_gpio_opcode[11][0], 0)
-SV(75, "LN GPIO 6 Off Opcode 2", eeprom.ln_gpio_opcode[11][1], 0)
-SV(76, "LN GPIO 6 Off Opcode 3", eeprom.ln_gpio_opcode[11][2], 0)
-SV(77, "LN GPIO 7 On Opcode 1", eeprom.ln_gpio_opcode[12][0], 0)
-SV(78, "LN GPIO 7 On Opcode 2", eeprom.ln_gpio_opcode[12][1], 0)
-SV(79, "LN GPIO 7 On Opcode 3", eeprom.ln_gpio_opcode[12][2], 0)
-SV(80, "LN GPIO 7 Off Opcode 1", eeprom.ln_gpio_opcode[13][0], 0)
-SV(81, "LN GPIO 7 Off Opcode 2", eeprom.ln_gpio_opcode[13][1], 0)
-SV(82, "LN GPIO 7 Off Opcode 3", eeprom.ln_gpio_opcode[13][2], 0)
-SV(83, "LN GPIO 8 On Opcode 1", eeprom.ln_gpio_opcode[14][0], 0)
-SV(84, "LN GPIO 8 On Opcode 2", eeprom.ln_gpio_opcode[14][1], 0)
-SV(85, "LN GPIO 8 On Opcode 3", eeprom.ln_gpio_opcode[14][2], 0)
-SV(86, "LN GPIO 8 Off Opcode 1", eeprom.ln_gpio_opcode[15][0], 0)
-SV(87, "LN GPIO 8 Off Opcode 2", eeprom.ln_gpio_opcode[15][1], 0)
-SV(88, "LN GPIO 8 Off Opcode 3", eeprom.ln_gpio_opcode[15][2], 0)
+
 SV(89, "PWM Port 1 Target", pwm_port[0].dimm_target, 0)
 SV(90, "PWM Port 2 Target", pwm_port[1].dimm_target, 0)
 SV(91, "PWM Port 3 Target", pwm_port[2].dimm_target, 0)

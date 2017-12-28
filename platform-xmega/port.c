@@ -61,6 +61,7 @@ PROCESS_THREAD(port_process, ev, data)
 	
 	PROCESS_BEGIN();
 	
+	port_init();
 	etimer_set(&port_timer, 20E-3*CLOCK_SECOND);
 	
 	while(1)
@@ -85,6 +86,7 @@ PROCESS_THREAD(port_process, ev, data)
 
 void port_update_configuration(void)
 {	
+	port_mode = eeprom.port_config;
 	port_di_init();
 	pwm_init();
 	relay_init();
@@ -100,8 +102,6 @@ void port_init(void)
 	port_di_init();
 	pwm_init();
 	relay_init();
-	
-	process_start(&port_process, NULL);
 }
 
 void port_di_init(void)

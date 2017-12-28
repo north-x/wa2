@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, Manuel Vetterli
+ * Copyright (c) 2017, Manuel Vetterli
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -29,6 +29,135 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */ 
 
+/************************************************************************/
+/* Module Configuration                                                 */
+/************************************************************************/
+#ifdef CONFIGURATION
+
+/*
+ *	Autostart List
+ *
+ *	List of all processes that are started automatically on startup
+ *
+ */
+#ifdef AUTOSTART_CFG
+&ln_process,
+#endif
+
+/*
+ *	SV Configuration Table
+ *
+ *	List of all configuration variables defined by this module
+ *
+ */
+#ifdef SV_CFG
+SV(8, "WDT Reset Counter", ln_wdt_counter, 0)
+SV(9, "Rx Error Counter", LnBuffer.Stats.RxErrors, 0)
+SV(10, "LN GPIO Status", ln_gpio_status, 0)
+SV(11, "LN GPIO Status Transmit", ln_gpio_status_tx, 0)
+SV(12, "LN Threshold Voltage x10", eeprom.ln_threshold, ln_update_threshold)
+
+SV(41, "LN GPIO 1 On Opcode 1", eeprom.ln_gpio_opcode[0][0], 0)
+SV(42, "LN GPIO 1 On Opcode 2", eeprom.ln_gpio_opcode[0][1], 0)
+SV(43, "LN GPIO 1 On Opcode 3", eeprom.ln_gpio_opcode[0][2], 0)
+SV(44, "LN GPIO 1 Off Opcode 1", eeprom.ln_gpio_opcode[1][0], 0)
+SV(45, "LN GPIO 1 Off Opcode 2", eeprom.ln_gpio_opcode[1][1], 0)
+SV(46, "LN GPIO 1 Off Opcode 3", eeprom.ln_gpio_opcode[1][2], 0)
+SV(47, "LN GPIO 2 On Opcode 1", eeprom.ln_gpio_opcode[2][0], 0)
+SV(48, "LN GPIO 2 On Opcode 2", eeprom.ln_gpio_opcode[2][1], 0)
+SV(49, "LN GPIO 2 On Opcode 3", eeprom.ln_gpio_opcode[2][2], 0)
+SV(50, "LN GPIO 2 Off Opcode 1", eeprom.ln_gpio_opcode[3][0], 0)
+SV(51, "LN GPIO 2 Off Opcode 2", eeprom.ln_gpio_opcode[3][1], 0)
+SV(52, "LN GPIO 2 Off Opcode 3", eeprom.ln_gpio_opcode[3][2], 0)
+SV(53, "LN GPIO 3 On Opcode 1", eeprom.ln_gpio_opcode[4][0], 0)
+SV(54, "LN GPIO 3 On Opcode 2", eeprom.ln_gpio_opcode[4][1], 0)
+SV(55, "LN GPIO 3 On Opcode 3", eeprom.ln_gpio_opcode[4][2], 0)
+SV(56, "LN GPIO 3 Off Opcode 1", eeprom.ln_gpio_opcode[5][0], 0)
+SV(57, "LN GPIO 3 Off Opcode 2", eeprom.ln_gpio_opcode[5][1], 0)
+SV(58, "LN GPIO 3 Off Opcode 3", eeprom.ln_gpio_opcode[5][2], 0)
+SV(59, "LN GPIO 4 On Opcode 1", eeprom.ln_gpio_opcode[6][0], 0)
+SV(60, "LN GPIO 4 On Opcode 2", eeprom.ln_gpio_opcode[6][1], 0)
+SV(61, "LN GPIO 4 On Opcode 3", eeprom.ln_gpio_opcode[6][2], 0)
+SV(62, "LN GPIO 4 Off Opcode 1", eeprom.ln_gpio_opcode[7][0], 0)
+SV(63, "LN GPIO 4 Off Opcode 2", eeprom.ln_gpio_opcode[7][1], 0)
+SV(64, "LN GPIO 4 Off Opcode 3", eeprom.ln_gpio_opcode[7][2], 0)
+SV(65, "LN GPIO 5 On Opcode 1", eeprom.ln_gpio_opcode[8][0], 0)
+SV(66, "LN GPIO 5 On Opcode 2", eeprom.ln_gpio_opcode[8][1], 0)
+SV(67, "LN GPIO 5 On Opcode 3", eeprom.ln_gpio_opcode[8][2], 0)
+SV(68, "LN GPIO 5 Off Opcode 1", eeprom.ln_gpio_opcode[9][0], 0)
+SV(69, "LN GPIO 5 Off Opcode 2", eeprom.ln_gpio_opcode[9][1], 0)
+SV(70, "LN GPIO 5 Off Opcode 3", eeprom.ln_gpio_opcode[9][2], 0)
+SV(71, "LN GPIO 6 On Opcode 1", eeprom.ln_gpio_opcode[10][0], 0)
+SV(72, "LN GPIO 6 On Opcode 2", eeprom.ln_gpio_opcode[10][1], 0)
+SV(73, "LN GPIO 6 On Opcode 3", eeprom.ln_gpio_opcode[10][2], 0)
+SV(74, "LN GPIO 6 Off Opcode 1", eeprom.ln_gpio_opcode[11][0], 0)
+SV(75, "LN GPIO 6 Off Opcode 2", eeprom.ln_gpio_opcode[11][1], 0)
+SV(76, "LN GPIO 6 Off Opcode 3", eeprom.ln_gpio_opcode[11][2], 0)
+SV(77, "LN GPIO 7 On Opcode 1", eeprom.ln_gpio_opcode[12][0], 0)
+SV(78, "LN GPIO 7 On Opcode 2", eeprom.ln_gpio_opcode[12][1], 0)
+SV(79, "LN GPIO 7 On Opcode 3", eeprom.ln_gpio_opcode[12][2], 0)
+SV(80, "LN GPIO 7 Off Opcode 1", eeprom.ln_gpio_opcode[13][0], 0)
+SV(81, "LN GPIO 7 Off Opcode 2", eeprom.ln_gpio_opcode[13][1], 0)
+SV(82, "LN GPIO 7 Off Opcode 3", eeprom.ln_gpio_opcode[13][2], 0)
+SV(83, "LN GPIO 8 On Opcode 1", eeprom.ln_gpio_opcode[14][0], 0)
+SV(84, "LN GPIO 8 On Opcode 2", eeprom.ln_gpio_opcode[14][1], 0)
+SV(85, "LN GPIO 8 On Opcode 3", eeprom.ln_gpio_opcode[14][2], 0)
+SV(86, "LN GPIO 8 Off Opcode 1", eeprom.ln_gpio_opcode[15][0], 0)
+SV(87, "LN GPIO 8 Off Opcode 2", eeprom.ln_gpio_opcode[15][1], 0)
+SV(88, "LN GPIO 8 Off Opcode 3", eeprom.ln_gpio_opcode[15][2], 0)
+#endif
+
+/*
+ *	EEPROM Configuration Variable Definition
+ */
+#ifdef EEPROM_CFG
+uint8_t ln_threshold;
+uint8_t ln_gpio_opcode[16][3];
+#endif
+
+/*
+ *	EEPROM Status Variable Definition
+ */
+#ifdef EEPROM_STATUS_CFG
+uint8_t ln_gpio_status;
+#endif
+
+/*
+ *	EEPROM Confiuration Variable Default Configuration
+ */
+#ifdef EEPROM_DEFAULT
+.ln_threshold = 20,
+.ln_gpio_opcode = {
+	{ 0xB0, 0x01, 0x20},
+	{ 0xB0, 0x01, 0x00},
+	{ 0xB0, 0x02, 0x20},
+	{ 0xB0, 0x02, 0x00},
+	{ 0xB0, 0x03, 0x20},
+	{ 0xB0, 0x03, 0x00},
+	{ 0, 0, 0},
+	{ 0, 0, 0},
+	{ 0xB0, 0x04, 0x20},
+	{ 0xB0, 0x04, 0x00},
+	{ 0xB0, 0x05, 0x20},
+	{ 0xB0, 0x05, 0x00},
+	{ 0xB0, 0x06, 0x20},
+	{ 0xB0, 0x06, 0x00},
+	{ 0, 0, 0},
+	{ 0, 0, 0}
+},
+#endif
+
+/*
+ *	EEPROM Status Variable Default Configuration
+ */
+#ifdef EEPROM_STATUS_DEFAULT
+.ln_gpio_status = 0,
+#endif
+
+#else
+/************************************************************************/
+/* Module Header File                                                   */
+/************************************************************************/
 #ifndef LN_SUPPORT_H_
 #define LN_SUPPORT_H_
 
@@ -43,4 +172,7 @@ void ln_throttle_process(lnMsg *LnPacket);
 void ln_load_board_config(void);
 void ln_create_opcode(uint8_t *buf, uint8_t opc, uint16_t addr);
 
+PROCESS_NAME(ln_process);
+
 #endif /* LN_SUPPORT_H_ */
+#endif

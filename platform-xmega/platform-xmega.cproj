@@ -343,9 +343,6 @@
     <Compile Include="usb_support.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="wa2.h">
-      <SubType>compile</SubType>
-    </Compile>
   </ItemGroup>
   <ItemGroup>
     <Folder Include="dev" />

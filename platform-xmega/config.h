@@ -29,8 +29,14 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */ 
 
-#define CONFIGURATION
-//#include "ln_support.h"
+#if defined(SV_CFG) || defined(EEPROM_CFG) || defined(EEPROM_STATUS_CFG) || defined(EEPROM_DEFAULT) || defined(EEPROM_STATUS_DEFAULT) || defined(AUTOSTART_CFG)
+	#define CONFIGURATION
+#else
+	#include "sys/process.h"
+#endif
+	
+#include "ln_support.h"
 #include "servo.h"
-//#include "port.h"
+#include "port.h"
+
 #undef CONFIGURATION

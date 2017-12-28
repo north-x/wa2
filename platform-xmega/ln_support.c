@@ -82,7 +82,6 @@ void loconet_init(void)
 		writeSVDestinationId(deviceID);
 	}
 	
-	process_start(&ln_process, NULL);
 	process_start(&ln_ack_process, NULL);
 	process_start(&ln_wdt_process, NULL);
 }
@@ -164,6 +163,7 @@ PROCESS_THREAD(ln_process, ev, data)
 	PROCESS_BEGIN();
 	
 	// Initialization
+	loconet_init();
 	ln_gpio_status = eeprom_status.ln_gpio_status;
 	ln_gpio_status_pre = eeprom_status.ln_gpio_status;
 	rSlot.slot = 0xFF;
