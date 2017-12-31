@@ -29,15 +29,28 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */ 
 
-#if defined(SV_CFG) || defined(EEPROM_CFG) || defined(EEPROM_STATUS_CFG) || defined(EEPROM_DEFAULT) || defined(EEPROM_STATUS_DEFAULT) || defined(AUTOSTART_CFG)
-	#define CONFIGURATION
-#else
-	#include "sys/process.h"
-#endif
-	
-#include "ln_support.h"
-#include "servo.h"
-#include "port.h"
+#include <avr/io.h>
+#include "sys/process.h"
+#include "sys/etimer.h"
 #include "wa2.h"
+#include "config.h"
+#include "eeprom.h"
 
-#undef CONFIGURATION
+PROCESS(wa2_process,"WA2 Application Process");
+
+
+PROCESS_THREAD(wa2_process, ev, data)
+{
+	
+	PROCESS_BEGIN();
+	
+	// Initialization
+	
+	while (1)
+	{
+		PROCESS_PAUSE();
+		
+	}
+	
+	PROCESS_END();
+}

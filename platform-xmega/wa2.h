@@ -29,15 +29,73 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */ 
 
-#if defined(SV_CFG) || defined(EEPROM_CFG) || defined(EEPROM_STATUS_CFG) || defined(EEPROM_DEFAULT) || defined(EEPROM_STATUS_DEFAULT) || defined(AUTOSTART_CFG)
-	#define CONFIGURATION
-#else
-	#include "sys/process.h"
-#endif
-	
-#include "ln_support.h"
-#include "servo.h"
-#include "port.h"
-#include "wa2.h"
+/************************************************************************/
+/* Module Configuration                                                 */
+/************************************************************************/
+#ifdef CONFIGURATION
 
-#undef CONFIGURATION
+/*
+ *	Autostart List
+ *
+ *	List of all processes that are started automatically on startup
+ *
+ */
+#ifdef AUTOSTART_CFG
+&wa2_process,
+#endif
+
+/*
+ *	SV Configuration Table
+ *
+ *	List of all configuration variables defined by this module
+ *
+ */
+#ifdef SV_CFG
+//SV(22, "SV No22", sv_no_22, 0)
+//SV_LSB(23, "LSB of sv16bit", eeprom.test_config16, update_function)
+//SV_MSB(24, "MSB of sv16bit", eeprom.test_config16, 0)
+#endif
+
+/*
+ *	EEPROM Configuration Variable Definition
+ */
+#ifdef EEPROM_CFG
+//uint16_t test_config16;
+//uint8_t test_config_array[2];
+#endif
+
+/*
+ *	EEPROM Status Variable Definition
+ */
+#ifdef EEPROM_STATUS_CFG
+//uint8_t test_status;
+#endif
+
+/*
+ *	EEPROM Confiuration Variable Default Configuration
+ */
+#ifdef EEPROM_DEFAULT
+//.test_config16 = 12345,
+//.test_config_array = {16, 16},
+#endif
+
+/*
+ *	EEPROM Status Variable Default Configuration
+ */
+#ifdef EEPROM_STATUS_DEFAULT
+//.test_status = 1,
+#endif
+
+#else
+/************************************************************************/
+/* Module Header File                                                   */
+/************************************************************************/
+#ifndef wa2_H_
+#define wa2_H_
+
+
+PROCESS_NAME(wa2_process);
+
+
+#endif /* wa2_H_ */
+#endif
