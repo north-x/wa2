@@ -54,13 +54,6 @@ void dimm_target_parameter_update(void);
 void dimm_delta_parameter_update(void);
 void ln_update_threshold(void);
 
-extern uint8_t ln_gpio_status;
-extern uint8_t ln_gpio_status;
-extern uint8_t ln_gpio_status_pre;
-extern uint8_t ln_gpio_status_tx;
-extern uint8_t ln_gpio_opcode_tx;
-extern uint8_t ln_gpio_opcode_tx2;
-extern uint8_t ln_wdt_counter;
 extern LnBuf LnBuffer;
 extern rwSlotDataMsg rSlot;
 
@@ -117,8 +110,6 @@ SV(106, "Servo 2 Delta", servo[1].time_delta, 0)
 SV_CONST(107, "IR Read Parameter Address", 107)
 SV_CONST(108, "IR Read Parameter", 108)
 SV_CONST(109, "IR Read Parameter Value", 109)
-SV(110, "LN GPIO Opcode Transmit L", ln_gpio_opcode_tx, 0)
-SV(111, "LN GPIO Opcode Transmit H", ln_gpio_opcode_tx2, 0)
 
 #define SV_CFG
 #include "config.h"

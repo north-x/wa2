@@ -53,8 +53,8 @@
 #ifdef SV_CFG
 SV(8, "WDT Reset Counter", ln_wdt_counter, 0)
 SV(9, "Rx Error Counter", LnBuffer.Stats.RxErrors, 0)
-SV(10, "LN GPIO Status", ln_gpio_status, 0)
-SV(11, "LN GPIO Status Transmit", ln_gpio_status_tx, 0)
+SV(10, "LN GPIO Status", ln_gpio_status[0], 0)
+SV(11, "LN GPIO Status Transmit", ln_gpio_tx[0], 0)
 SV(12, "LN Threshold Voltage x10", eeprom.ln_threshold, ln_update_threshold)
 
 SV(41, "LN GPIO 1 On Opcode 1", eeprom.ln_gpio_opcode[0][0], 0)
@@ -112,6 +112,8 @@ SV(88, "LN GPIO 8 Off Opcode 3", eeprom.ln_gpio_opcode[15][2], 0)
  */
 #ifdef EEPROM_CFG
 uint8_t ln_threshold;
+uint8_t ln_gpio_ack_count;
+uint8_t ln_wdt_enable;
 uint8_t ln_gpio_opcode[16][3];
 #endif
 
@@ -119,7 +121,7 @@ uint8_t ln_gpio_opcode[16][3];
  *	EEPROM Status Variable Definition
  */
 #ifdef EEPROM_STATUS_CFG
-uint8_t ln_gpio_status;
+uint8_t ln_gpio_status[2];
 #endif
 
 /*
@@ -127,6 +129,8 @@ uint8_t ln_gpio_status;
  */
 #ifdef EEPROM_DEFAULT
 .ln_threshold = 20,
+.ln_gpio_ack_count = 0,
+.ln_wdt_enable = 0,
 .ln_gpio_opcode = {
 	{ 0xB0, 0x01, 0x20},
 	{ 0xB0, 0x01, 0x00},
@@ -151,7 +155,7 @@ uint8_t ln_gpio_status;
  *	EEPROM Status Variable Default Configuration
  */
 #ifdef EEPROM_STATUS_DEFAULT
-.ln_gpio_status = 0,
+.ln_gpio_status = { 0, 0 },
 #endif
 
 #else
@@ -162,6 +166,18 @@ uint8_t ln_gpio_status;
 #define LN_SUPPORT_H_
 
 #include "loconet.h"
+
+#define LN_GPIO_CH_COUNT	16
+#define LN_GPIO_BW		((LN_GPIO_CH_COUNT-1)/8L)+1
+
+extern uint8_t ln_gpio_dir[LN_GPIO_BW];
+extern uint8_t ln_gpio_tx[LN_GPIO_BW];
+extern uint8_t ln_gpio_tx_ack[LN_GPIO_BW];
+extern uint8_t ln_gpio_status[LN_GPIO_BW];
+extern uint8_t ln_gpio_status_pre[LN_GPIO_BW];
+extern uint8_t ln_gpio_status_ack[LN_GPIO_BW];
+extern uint8_t ln_gpio_ack_count;
+extern uint8_t ln_wdt_counter;
 
 void loconet_init(void);
 uint8_t ln_create_message(uint8_t *msg);
