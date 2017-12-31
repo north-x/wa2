@@ -68,7 +68,6 @@ void loconet_init(void)
 	initLnBuf(&LnBuffer);
 	initLocoNet(&LnBuffer);
 	ACA.CTRLB = ((eeprom.ln_threshold/4)-1)&0x3F;
-	DACB.CH0DATAH = eeprom.ln_threshold<<1;
 	
 	if (eeprom.sv_serial_number==0xFFFF)
 	{
@@ -85,6 +84,12 @@ void loconet_init(void)
 	process_start(&ln_ack_process, NULL);
 	process_start(&ln_wdt_process, NULL);
 }
+
+void ln_update_threshold(void)
+{
+	ACA.CTRLB = ((eeprom.ln_threshold/4)-1)&0x3F;
+}
+
 
 PROCESS_THREAD(ln_wdt_process, ev, data)
 {

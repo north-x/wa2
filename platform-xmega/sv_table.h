@@ -183,10 +183,4 @@ void dimm_delta_parameter_update(void)
 	}
 }
 
-void ln_update_threshold(void)
-{
-	ACA.CTRLB = ((eeprom.ln_threshold/4)-1)&0x3F;
-	DACB.CH0DATAH = eeprom.ln_threshold<<1;
-}
-
 #endif /* PARAMETER_TABLE_H_ */

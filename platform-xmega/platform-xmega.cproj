@@ -175,9 +175,6 @@
     <Compile Include="eeprom.h">
       <SubType>compile</SubType>
     </Compile>
-    <None Include="ln_hwtx_hwrx_uart.c">
-      <SubType>compile</SubType>
-    </None>
     <Compile Include="ln_support.c">
       <SubType>compile</SubType>
     </Compile>

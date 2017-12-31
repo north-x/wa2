@@ -362,28 +362,18 @@ void initLocoNetHardware( LnBuf *RxBuffer )
 	PORTE.OUTCLR = (1<<3);
 	PORTE.DIRSET = (1<<3);
 	
-	// DAC Setup
-	DACB.CTRLB = DAC_CHSEL_SINGLE_gc;
-	DACB.CTRLC = DAC_REFSEL_AVCC_gc | DAC_LEFTADJ_bm;
-	
-	// Enable DAC, connect to internal output
-	DACB.CTRLA = DAC_ENABLE_bm | DAC_IDOEN_bm;
-	
-	// Trigger conversion
-	DACB.CH0DATAH = ((2500*10/78*256UL/3300)-1)&0xFF; // 2.5 V Threshold;
-
 	// Set voltage reference
 	ACA.CTRLB = ((2500*10/78*64/3300)-1)&0x3F; // 2.5 V Threshold
 
 	// connect comparators to pins
 	ACA.AC0MUXCTRL = AC_MUXPOS_PIN3_gc | AC_MUXNEG_SCALER_gc;
-	ACA.AC1MUXCTRL = AC_MUXPOS_PIN3_gc | AC_MUXNEG_DAC_gc;
+	ACA.AC1MUXCTRL = AC_MUXPOS_PIN3_gc | AC_MUXNEG_SCALER_gc;
 
 	// and enable them
 	//AC0 generates event on falling edge
-	ACA.AC0CTRL = AC_ENABLE_bm | AC_INTMODE_FALLING_gc | AC_INTLVL_OFF_gc | AC_HYSMODE_SMALL_gc;
+	ACA.AC0CTRL = AC_ENABLE_bm | AC_INTMODE_FALLING_gc | AC_INTLVL_OFF_gc | AC_HYSMODE_LARGE_gc;
 	//AC1 generates event on rising edge
-	ACA.AC1CTRL = AC_ENABLE_bm | AC_INTMODE_RISING_gc | AC_INTLVL_OFF_gc | AC_HYSMODE_SMALL_gc;
+	ACA.AC1CTRL = AC_ENABLE_bm | AC_INTMODE_RISING_gc | AC_INTLVL_OFF_gc | AC_HYSMODE_LARGE_gc;
 
 	// clear pending interrupt flags (net free detection)
 	ACA.STATUS = AC_AC0IF_bm | AC_AC1IF_bm;
