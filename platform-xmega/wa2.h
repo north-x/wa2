@@ -86,6 +86,15 @@
 //.test_status = 1,
 #endif
 
+/*
+ * LN Receive Callback Definition
+ *
+ * Function to be called when a valid packet was received
+ */
+#ifdef LN_RX_CALLBACK
+LN_RX_CALLBACK(ln_throttle_process)
+#endif
+
 #else
 /************************************************************************/
 /* Module Header File                                                   */
@@ -95,7 +104,7 @@
 
 
 PROCESS_NAME(wa2_process);
-
+void ln_throttle_process(lnMsg *LnPacket);
 
 #endif /* wa2_H_ */
 #endif

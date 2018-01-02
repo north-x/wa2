@@ -176,6 +176,7 @@ extern uint8_t ln_gpio_tx_ack[LN_GPIO_BW];
 extern uint8_t ln_gpio_status[LN_GPIO_BW];
 extern uint8_t ln_gpio_status_pre[LN_GPIO_BW];
 extern uint8_t ln_gpio_status_ack[LN_GPIO_BW];
+extern uint8_t ln_gpio_status_flag[LN_GPIO_BW];
 extern uint8_t ln_gpio_ack_count;
 extern uint8_t ln_wdt_counter;
 
@@ -184,7 +185,6 @@ uint8_t ln_create_message(uint8_t *msg);
 uint8_t ln_create_message_ack(uint8_t *msg);
 void ln_gpio_process_tx(void);
 void ln_gpio_process_rx(lnMsg *LnPacket);
-void ln_throttle_process(lnMsg *LnPacket);
 void ln_load_board_config(void);
 void ln_create_opcode(uint8_t *buf, uint8_t opc, uint16_t addr);
 
