@@ -43,7 +43,6 @@ typedef struct t_eeprom_storage {
 	uint8_t salt;
 	uint16_t sv_serial_number;
 	uint16_t sv_destination_id;
-	uint8_t ubasic_autostart;
 #define EEPROM_CFG
 #include "config.h"
 #undef EEPROM_CFG

@@ -36,8 +36,6 @@
 
 #include "config.h"
 #include "eeprom.h"
-#include "platform.h"
-#include "ubasic.h"
 
 struct t_eeprom_storage eeprom;
 struct t_eeprom_storage eeprom_shadow;
@@ -50,7 +48,6 @@ struct t_eeprom_storage eeprom_default = {
 			.salt = 0xAA+SOFTWARE_VERSION,
 			.sv_serial_number = 0xFFFF,
 			.sv_destination_id = 0xFFFF,
-			.ubasic_autostart = (1<<0)|(1<<1)|(0<<2)|(0<<3),
 #define EEPROM_DEFAULT
 #include "config.h"
 #undef EEPROM_DEFAULT
@@ -84,8 +81,6 @@ void eeprom_load_defaults(void)
 {
 	memcpy(&eeprom, &eeprom_default, sizeof(t_eeprom_storage));
 	memcpy(&eeprom_status, &eeprom_status_default, sizeof(t_eeprom_status));
-	ubasic_load_default_scripts();
-	ubasic_save_scripts();
 }
 
 void eeprom_sync_storage(void)

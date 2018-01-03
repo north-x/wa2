@@ -67,9 +67,7 @@ void init(void)
 	process_start(&etimer_process, NULL);
 	
 	usb_init();
-	
-	ubasic_start();
-	
+		
 	PMIC.CTRL = PMIC_LOLVLEN_bm | PMIC_MEDLVLEN_bm | PMIC_HILVLEN_bm;
 	sei();
 }

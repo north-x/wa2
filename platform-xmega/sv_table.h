@@ -39,8 +39,6 @@
 
 #include "config.h"
 #include "eeprom.h"
-#include "platform.h"
-#include "ubasic.h"
 #include "usb/usb.h"
 #include <avr/wdt.h>
 #include <string.h>
@@ -62,14 +60,9 @@ uint8_t dimm_delta_temp;
 uint8_t dimm_parameter_select;
 uint8_t cmd_register = 0;
 
-extern uint8_t ubasic_script_status;
 
 // Block mapping of TSE scripts starting at SV 112/170/240/304 (0x70/0xB0/0xF0/0x130)
 SV_BLOCK_TABLE_BEGIN()
-SV_BLOCK_MAP(0, MAX_PROGRAM_LEN, "UB Prog 1", ubasic_scripts[0].mem)
-SV_BLOCK_MAP(1, MAX_PROGRAM_LEN, "UB Prog 2", ubasic_scripts[1].mem)
-SV_BLOCK_MAP(2, MAX_PROGRAM_LEN, "UB Prog 3", ubasic_scripts[2].mem)
-SV_BLOCK_MAP(3, MAX_PROGRAM_LEN, "UB Prog 4", ubasic_scripts[3].mem)
 SV_BLOCK_TABLE_END();
 
 SV_TABLE_BEGIN()
@@ -85,9 +78,6 @@ SV(16, "PWM Port Select", dimm_parameter_select, 0)
 SV(17, "PWM Port Target", dimm_target_temp, dimm_target_parameter_update)
 SV(18, "PWM Port Delta", dimm_delta_temp, dimm_delta_parameter_update)
 SV(19, "Relay Command", relay_request, 0)
-
-SV_LSB(35, "UBasic Status", ubasic_script_status, 0)
-SV(36, "UBasic Autostart", eeprom.ubasic_autostart, 0)
 
 SV(89, "PWM Port 1 Target", pwm_port[0].dimm_target, 0)
 SV(90, "PWM Port 2 Target", pwm_port[1].dimm_target, 0)
@@ -127,14 +117,12 @@ void cmd_exec(void)
 			break;
 		case 1:
 			eeprom_sync_storage();
-			ubasic_save_scripts();
 			break;
 		case 2:
 			wdt_enable(WDTO_1S);
 			break;
 		case 3:
 			eeprom_load_defaults();
-			ubasic_load_default_scripts();
 			break;
 		case 4:
 			USB_enter_bootloader();

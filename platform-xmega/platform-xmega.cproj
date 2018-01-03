@@ -62,7 +62,7 @@
       <ToolNumber>00A2000015DA</ToolNumber>
       <ToolName>AVR Dragon</ToolName>
     </com_atmel_avrdbg_tool_avrdragon>
-    <preserveEEPROM>True</preserveEEPROM>
+    <preserveEEPROM>False</preserveEEPROM>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
     <ToolchainSettings>
@@ -286,27 +286,6 @@
     <Compile Include="sys\utils.h">
       <SubType>compile</SubType>
     </Compile>
-    <Compile Include="ubasic\basic_cfg.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\basic_interface.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\platform.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\tokenizer.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\tokenizer.h">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\ubasic.c">
-      <SubType>compile</SubType>
-    </Compile>
-    <Compile Include="ubasic\ubasic.h">
-      <SubType>compile</SubType>
-    </Compile>
     <Compile Include="usb\Common.h">
       <SubType>compile</SubType>
     </Compile>
@@ -350,7 +329,6 @@
   <ItemGroup>
     <Folder Include="dev" />
     <Folder Include="loconet" />
-    <Folder Include="ubasic" />
     <Folder Include="usb" />
     <Folder Include="sys" />
   </ItemGroup>

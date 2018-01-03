@@ -40,7 +40,7 @@
 #include "IdStorage.h"
 #include "ln_support.h"
 #include "usb_support.h"
-#include "servo.h"
+#include "config.h"
 
 PROCESS(ln_process, "Loconet Handler");
 PROCESS(ln_ack_process, "Loconet Ack Handler");
@@ -889,6 +889,13 @@ void ln_load_board_config(void)
 			eeprom.servo_timeout = 256;
 			ln_create_opcode(eeprom.ln_gpio_opcode[0], OPC_SW_REQ, 6);
 			ln_create_opcode(eeprom.ln_gpio_opcode[2], OPC_SW_REQ, 7);
+			break;
+		case 0xF703:
+			eeprom.sv_destination_id = 42;
+			eeprom.sv_serial_number = 42;
+			ln_create_opcode(eeprom.ln_gpio_opcode[0], OPC_SW_REQ, 1);
+			ln_create_opcode(eeprom.ln_gpio_opcode[2], OPC_SW_REQ, 2);
+			return;
 			break;
 		case 0x6CF3:
 			eeprom.sv_destination_id = deviceID;
