@@ -247,10 +247,10 @@ void servo_init(void)
 	// Initial conditions of timer
 	TCC0.CNT = 0;
 	TCC0.PER = PERVAL;
-	TCC0.CCA = PERVAL;
-	TCC0.CCB = PERVAL;
-	TCC0.CCC = PERVAL;
-	TCC0.CCD = PERVAL;
+	TCC0.CCA = PERVAL+1;
+	TCC0.CCB = PERVAL+1;
+	TCC0.CCC = PERVAL+1;
+	TCC0.CCD = PERVAL+1;
 	
 	// Mode: Single Slope PWM
 	TCC0.CTRLB = TC_WGMODE_SINGLESLOPE_gc;
@@ -404,7 +404,16 @@ void servo_isr(void)
 			{
 				default:
 				case 0:
-					servo_isr_timer = 0;
+					servo_isr_timer = servo_delay;
+#if defined(__AVR_XMEGA__)
+					TCC0.CCABUF = servo[1].pulse_value;
+					TCC0.CCBBUF = servo[0].pulse_value;
+					TCC0.CCCBUF = servo[0].pulse_value;
+					TCC0.CCDBUF = servo[1].pulse_value;
+#elif defined(__AVR__)
+					OCR1A = servo[0].pulse_value;
+					OCR1B = servo[1].pulse_value;
+#endif
 					break;
 				case 1:
 				case 2:
@@ -412,10 +421,10 @@ void servo_isr(void)
 					LATDbits.LATD0 = 1;
 					LATDbits.LATD2 = 1;
 #elif defined (__AVR_XMEGA__)
-					TCC0.CCA = PERVAL;
-					TCC0.CCB = PERVAL;
-					TCC0.CCC = PERVAL;
-					TCC0.CCD = PERVAL;
+					TCC0.CCA = PERVAL+1;
+					TCC0.CCB = PERVAL+1;
+					TCC0.CCC = PERVAL+1;
+					TCC0.CCD = PERVAL+1;
 #elif defined(__AVR__)
 					OCR1A = TOPVAL;
 					OCR1B = TOPVAL;

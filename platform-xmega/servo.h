@@ -129,8 +129,8 @@ uint8_t servo_position[2];
 #define S22_PWM				3
 
 // Timing Borders for Servo Pulse
-#define SERVO_MINTIME      1000L    // 1ms
-#define SERVO_INTERVAL     1000L    // 1ms
+#define SERVO_MINTIME      750L    // 0.75ms
+#define SERVO_INTERVAL     1500L    // 1.5ms
 
 // defines for the Timer and the OCR
 // note: only valid for "rounded" F_CPU values

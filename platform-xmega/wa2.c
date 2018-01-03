@@ -59,11 +59,11 @@ PROCESS_THREAD(wa2_process, ev, data)
 			// Set new position accordingly
 			if (ln_gpio_status[0]&(1<<0))
 			{
-				servo[0].position_setpoint = 230;
+				servo[0].position_setpoint = 255;
 			}
 			else
 			{
-				servo[0].position_setpoint = 25;
+				servo[0].position_setpoint = 0;
 			}
 
 			// Turn on relay if position greater than 127
@@ -92,11 +92,11 @@ PROCESS_THREAD(wa2_process, ev, data)
 			// Set new position accordingly
 			if (ln_gpio_status[0]&(1<<1))
 			{
-				servo[1].position_setpoint = 230;
+				servo[1].position_setpoint = 255;
 			}
 			else
 			{
-				servo[1].position_setpoint = 25;
+				servo[1].position_setpoint = 0;
 			}
 
 			// Turn on relay if position greater than 127
@@ -228,6 +228,7 @@ void ln_throttle_process(lnMsg *LnPacket)
 						{
 							ln_gpio_status[0] |= (1<<1);
 							ln_gpio_status_pre[0] |= (1<<1);
+							ln_gpio_status_flag[0] |= (1<<1);
 							servo_act = &servo[1].max;
 							servo_speed = &servo[1].time_ratio;
 						}
@@ -235,6 +236,7 @@ void ln_throttle_process(lnMsg *LnPacket)
 						{
 							ln_gpio_status[0] |= (1<<0);
 							ln_gpio_status_pre[0] |= (1<<0);
+							ln_gpio_status_flag[0] |= (1<<0);
 							servo_act = &servo[0].max;
 							servo_speed = &servo[0].time_ratio;
 						}
@@ -246,6 +248,7 @@ void ln_throttle_process(lnMsg *LnPacket)
 						{
 							ln_gpio_status[0] &= ~(1<<1);
 							ln_gpio_status_pre[0] &= ~(1<<1);
+							ln_gpio_status_flag[0] |= (1<<1);
 							servo_act = &servo[1].min;
 							servo_speed = &servo[1].time_ratio;
 						}
@@ -253,6 +256,7 @@ void ln_throttle_process(lnMsg *LnPacket)
 						{
 							ln_gpio_status[0] &= ~(1<<0);
 							ln_gpio_status_pre[0] &= ~(1<<0);
+							ln_gpio_status_flag[0] |= (1<<0);
 							servo_act = &servo[0].min;
 							servo_speed = &servo[0].time_ratio;
 						}

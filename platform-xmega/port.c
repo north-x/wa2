@@ -94,6 +94,8 @@ void port_update_configuration(void)
 
 void port_init(void)
 {	
+	port_mode = eeprom.port_config;
+	
 	// S_Power is configured regardless of mode
 	PORTA.PIN5CTRL = PORT_INVEN_bm;
 	PORTA.OUTSET = (1<<5);
