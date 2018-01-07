@@ -47,7 +47,7 @@
 #include "sysdef.h"        // board definition
 
 // Board defines for WA2
-#define LN_TMR					TCC1
+#define LN_TMR					TCE0
 
 #define LN_TMR_COUNT_REG TCE0.CNT
 #define LN_TMR_INP_CAPT_REG TCE0.CCA
@@ -59,13 +59,13 @@
 #define LN_SW_UART_SET_TX_LOW PORTE.OUTSET = (1<<3);
 
 #define LN_RX_PORT            ACA.STATUS
-#define LN_RX_BIT             AC_AC1STATE_bp
+#define LN_RX_BIT             AC_AC0STATE_bp
 
 #define LN_TX_PORT            PORTE.OUT
 #define LN_TX_DDR             PORTE.DIR
 #define LN_TX_BIT             3
 
-#define LN_TIMER_TX_RELOAD_ADJUST	12		// 3 us delay
+#define LN_TIMER_TX_RELOAD_ADJUST	10		// 3 us delay
 
 
 #define LN_ST_IDLE            0   // net is free for anyone to start transmission
@@ -215,13 +215,13 @@ ISR(LN_TMR_SIGNAL)     /* signal handler for timer0 overflow */
 		return;
 	}
 	
-	if (ACA.STATUS&AC_AC1STATE_bm)
+	if (ACA.STATUS&AC_AC0STATE_bm)
 		filter_cnt++;
 	
-	if (ln_ac_buf[0]&AC_AC1STATE_bm)
+	if (ln_ac_buf[0]&AC_AC0STATE_bm)
 		filter_cnt++;
 	
-	if (ln_ac_buf[1]&AC_AC1STATE_bm)
+	if (ln_ac_buf[1]&AC_AC0STATE_bm)
 		filter_cnt++;
 		
 	filter_cnt >>= 1;
@@ -395,12 +395,6 @@ void initLocoNetHardware( LnBuf *RxBuffer )
 	// Clear pending interrupts and enable SB detection
 	ACA.STATUS = AC_AC0IF_bm;
 	ACA.AC0CTRL |= AC_INTLVL_HI_gc;
-
-	// Timer C1: Prescaler 8
-	LN_TMR.PER = 0xFFFF;
-	LN_TMR.CTRLA = TC_CLKSEL_DIV8_gc;
-	LN_TMR.CTRLB = 0;			// Normal mode PER = TOP
-	LN_TMR.CTRLD = 0;			// No action for incoming events
 
 	lnState = LN_ST_IDLE ;
 	
