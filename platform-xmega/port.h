@@ -52,6 +52,10 @@
  */
 #ifdef SV_CFG
 SV(6, "Port Configuration Register", eeprom.port_config, port_update_configuration)
+SV(13, "Port Digital Output Select", eeprom.port_do_select, 0)
+SV(14, "Port Digital Output Cmd", port_do, 0)
+SV(15, "Port Digital Input Status", port_di, 0)
+
 #endif
 
 /*
@@ -59,6 +63,12 @@ SV(6, "Port Configuration Register", eeprom.port_config, port_update_configurati
  */
 #ifdef EEPROM_CFG
 uint8_t port_config;
+uint16_t port_do_select;
+uint16_t port_map_select_on[16];
+uint16_t port_map_select_off[16];
+uint16_t port_brightness_select[2];
+int8_t port_brightness[4];
+
 #endif
 
 /*
@@ -73,6 +83,11 @@ uint8_t relay_request;
  */
 #ifdef EEPROM_DEFAULT
 .port_config = (1<<PORT_MODE_PULLUP_ENABLE),
+.port_do_select = 0,
+.port_map_select_on = {(1<<0), (1<<1), (1<<2), (1<<3), (1<<4), (1<<5), (1<<6), (1<<7), (1<<8), (1<<9), (1<<10), (1<<11), (1<<12), (1<<13), (1<<14), (1<<15)},
+.port_map_select_off = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+.port_brightness_select = {0, 0},
+.port_brightness = {DIMM_RANGE_MAX, DIMM_RANGE_MIN+PWM_STEPS/4, DIMM_RANGE_MIN+PWM_STEPS/2, DIMM_RANGE_MIN+3*PWM_STEPS/4 },
 #endif
 
 /*
@@ -122,9 +137,9 @@ uint8_t relay_request;
 
 #define PWM_TIMER_PRESCALER	8
 #define PWM_TICK_PERIOD     250L        // 250us tick for PWM Engine
-#define PWM_STEPS           60L
+#define PWM_STEPS           63L
 #define PWM_PERIOD          (PWM_TICK_PERIOD * PWM_STEPS)    // 15ms = 250 * 60L
-#define DIMM_RANGE_MIN		100    // aktiver Bereich 100-160
+#define DIMM_RANGE_MIN		0    // aktiver Bereich 0-63
 #define DIMM_RANGE_MAX (DIMM_RANGE_MIN+PWM_STEPS+1)
 
 #define PWM_PERVAL   (F_CPU / 1000000L * PWM_TICK_PERIOD / PWM_TIMER_PRESCALER)
@@ -138,31 +153,44 @@ uint8_t relay_request;
 
 typedef struct t_pwm_port
 {
-	uint8_t dimm_current;
-	uint8_t dimm_target;
+	int8_t dimm_current;
+	int8_t dimm_target;
 	uint8_t dimm_delta;
 } t_pwm_port;
+
+typedef struct t_function_mapping
+{
+	uint16_t select_on;
+	uint16_t select_off;
+} t_function_mapping;
 
 void port_init(void);
 void port_update_configuration(void);
 void port_di_init(void);
 
+void port_do_mapping(void);
+void port_do_mapping_init(void);
+
 void pwm_init(void);
 void pwm_tick(void);
 void pwm_step(void);
 
-extern uint8_t port_do_select;
-extern uint8_t port_do;
-extern uint8_t port_di;
+extern uint16_t port_do_select;
+extern uint16_t port_do;
+extern uint16_t port_di;
 
 extern uint8_t port_mode;
 
 extern t_pwm_port pwm_port[PWM_PORT_COUNT];
-extern uint8_t pwm_target[PWM_PORT_COUNT];
+extern int8_t pwm_target[PWM_PORT_COUNT];
 extern uint8_t pwm_delta[PWM_PORT_COUNT];
 extern uint16_t pwm_update_trig;
 extern uint16_t pwm_update_cont;
 extern uint16_t pwm_at_setpoint;
+
+extern t_function_mapping port_map[];
+extern uint16_t port_brightness_select[];
+extern int8_t port_brightness[];
 
 extern uint8_t relay_cmd;
 extern uint8_t relay_request;

@@ -31,22 +31,22 @@
 
 #include <stdio.h>
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #include "sys/process.h"
 #include "sys/etimer.h"
 #include "port.h"
 #include "eeprom.h"
 
 t_pwm_port pwm_port[PWM_PORT_COUNT];
-uint8_t pwm_target[PWM_PORT_COUNT];
+int8_t pwm_target[PWM_PORT_COUNT];
 uint8_t pwm_delta[PWM_PORT_COUNT];
 uint16_t pwm_update_trig;
 uint16_t pwm_update_cont;
 uint16_t pwm_at_setpoint;
 
 uint8_t port_mode;
-uint8_t port_do_select;
-uint8_t port_do;
-uint8_t port_di;
+uint16_t port_do;
+uint16_t port_di;
 
 uint8_t cur_dimm;
 
@@ -78,6 +78,7 @@ PROCESS_THREAD(port_process, ev, data)
 
 		relay_process();
 		pwm_step();
+		port_do_mapping();
 		etimer_reset(&port_timer);
 	}
 	
@@ -90,6 +91,7 @@ void port_update_configuration(void)
 	port_di_init();
 	pwm_init();
 	relay_init();
+	port_do_mapping_init();
 }
 
 void port_init(void)
@@ -486,13 +488,8 @@ void pwm_step(void)
 			pwm_port[index].dimm_target = pwm_target[index];
 		}
 		
-		if (port_do_select&(1<<index))
+		if (eeprom.port_do_select&(1<<index))
 		{
-			if (port_do&(1<<index))
-				pwm_port[index].dimm_current = 0xFF;
-			else
-				pwm_port[index].dimm_current = 0;
-			
 			continue;
 		}
 		
@@ -559,4 +556,106 @@ void pwm_init(void)
 	PORTA.DIRSET = (1<<6)|(1<<7);
 	PORTB.DIRSET = (1<<1)|(1<<0);
 	PORTC.DIRSET = (1<<1)|(1<<0);
+	
+	// Enable Timer Type 2
+	TCC2.CTRLE = TC2_BYTEM_SPLITMODE_gc;
+	TCC2.LPER = PWM_STEPS+1;
+	TCC2.HPER = PWM_STEPS+1;
+	TCC2.CTRLB = 0xFF; // Enable all compare channels
+	TCC2.CTRLA = TC2_CLKSEL_EVCH3_gc;
+
+	// Enable Timer Type 2
+	TCD2.CTRLE = TC2_BYTEM_SPLITMODE_gc;
+	TCD2.LPER = PWM_STEPS+1;
+	TCD2.HPER = PWM_STEPS+1;
+	TCD2.CTRLB = 0xFF; // Enable all compare channels
+	TCD2.CTRLA = TC2_CLKSEL_EVCH3_gc;
+	
+	// Event CH3: 32 MHz / 4096 = 7812.5 Hz clock
+	EVSYS.CH3MUX = EVSYS_CHMUX_PRESCALER_4096_gc;
+
+	// Enable interrupt on TCC2
+	TCD2.INTCTRLA = TC2_HUNFINTLVL_LO_gc;
+}
+
+// TCD2 Low-byte Timer Underflow Interrupt
+// Frequency: CLKper / 4096 / PWM_STEPS = 120.2 Hz
+ISR(TCD2_HUNF_vect)
+{
+	// Do housekeeping
+	TCC2.LCMPA = pwm_port[4].dimm_current>DIMM_RANGE_MIN ? pwm_port[4].dimm_current>DIMM_RANGE_MAX ? PWM_STEPS+1 : pwm_port[4].dimm_current : 0;
+	TCC2.LCMPB = pwm_port[6].dimm_current>DIMM_RANGE_MIN ? pwm_port[6].dimm_current - DIMM_RANGE_MIN : 0;
+	TCC2.LCMPC = pwm_port[1].dimm_current>DIMM_RANGE_MIN ? pwm_port[1].dimm_current - DIMM_RANGE_MIN : 0;
+	TCC2.LCMPD = pwm_port[3].dimm_current>DIMM_RANGE_MIN ? pwm_port[3].dimm_current>DIMM_RANGE_MAX ? PWM_STEPS+1 : pwm_port[3].dimm_current - DIMM_RANGE_MIN : 0;
+	TCC2.HCMPA = pwm_port[5].dimm_current>DIMM_RANGE_MIN ? pwm_port[5].dimm_current - DIMM_RANGE_MIN : 0;
+	TCC2.HCMPB = pwm_port[7].dimm_current>DIMM_RANGE_MIN ? pwm_port[7].dimm_current - DIMM_RANGE_MIN : 0;
+	TCC2.HCMPC = pwm_port[8].dimm_current>DIMM_RANGE_MIN ? pwm_port[8].dimm_current - DIMM_RANGE_MIN : 0;
+	TCC2.HCMPD = pwm_port[10].dimm_current>DIMM_RANGE_MIN ? pwm_port[10].dimm_current - DIMM_RANGE_MIN : 0;
+	
+	TCD2.LCMPA = pwm_port[12].dimm_current>DIMM_RANGE_MIN ? pwm_port[12].dimm_current - DIMM_RANGE_MIN : 0;
+	TCD2.LCMPB = pwm_port[14].dimm_current>DIMM_RANGE_MIN ? pwm_port[14].dimm_current - DIMM_RANGE_MIN : 0;
+	TCD2.LCMPC = pwm_port[9].dimm_current>DIMM_RANGE_MIN ? pwm_port[9].dimm_current - DIMM_RANGE_MIN : 0;
+	TCD2.LCMPD = pwm_port[11].dimm_current>DIMM_RANGE_MIN ? pwm_port[11].dimm_current - DIMM_RANGE_MIN : 0;
+	TCD2.HCMPA = pwm_port[13].dimm_current>DIMM_RANGE_MIN ? pwm_port[13].dimm_current - DIMM_RANGE_MIN : 0;
+	TCD2.HCMPB = pwm_port[15].dimm_current>DIMM_RANGE_MIN ? pwm_port[15].dimm_current - DIMM_RANGE_MIN : 0;
+	TCD2.HCMPC = pwm_port[0].dimm_current>DIMM_RANGE_MIN ? pwm_port[0].dimm_current - DIMM_RANGE_MIN : 0;
+	TCD2.HCMPD = pwm_port[2].dimm_current>DIMM_RANGE_MIN ? pwm_port[2].dimm_current>DIMM_RANGE_MAX ? PWM_STEPS+1 : pwm_port[2].dimm_current - DIMM_RANGE_MIN : 0;
+	
+	// Disable interrupt
+	TCD2.INTCTRLA = 0;
+}
+
+
+void port_do_mapping(void)
+{
+	uint8_t index;
+	uint16_t port_state_on = 0;
+	uint16_t port_state_off = 0;
+	
+	// Determine new output state
+	for (index=0;index<16;index++)
+	{
+		if (port_do&(1<<index))
+		{
+			port_state_on |= eeprom.port_map_select_on[index];
+			port_state_off |= eeprom.port_map_select_off[index];
+		}
+	}
+	
+	port_state_on &= ~port_state_off;
+	
+	// Assign brightness
+	for (index=0;index<16;index++)
+	{
+		if ((eeprom.port_do_select&(1<<index))==0)
+		{
+			continue;
+		}
+		
+		if ((port_state_on&(1<<index))==0)
+		{
+			pwm_port[index].dimm_current = 0;
+			//pwm_port[index].dimm_target = 0;
+			continue;
+		}
+		
+		uint8_t idx_reg = 0;
+		
+		for (uint8_t idx=0;idx<sizeof(eeprom.port_brightness_select)/sizeof(eeprom.port_brightness_select[0]);idx++)
+		{
+			idx_reg |= (eeprom.port_brightness_select[idx]&(1<<index)) ? (1<<idx) : 0;
+		}
+		
+		pwm_port[index].dimm_current = eeprom.port_brightness[idx_reg];
+		//pwm_port[index].dimm_target = port_brightness[idx_reg];
+	}
+	
+	// Trigger update by enabling interrupt of TCD2
+	TCD2.INTFLAGS = TC2_HUNFIF_bm;
+	TCD2.INTCTRLA = TC2_HUNFINTLVL_LO_gc;
+}
+
+void port_do_mapping_init(void)
+{
+		
 }
