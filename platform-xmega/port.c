@@ -403,50 +403,21 @@ void servo_power_disable(void)
 // This is the PWM Interrupt
 
 void pwm_tick(void)
-{
-	uint8_t port;
-	uint8_t mask;
-	uint8_t port_mask = 0;
-
-	//if (!(port_mode&(1<<PORT_MODE_PWM_ENABLE)))
-	//	return;
+{	
+	// PWM Output Mapping
+	uint8_t temp = TCD2.CTRLC<<3;
+	PORTC.OUTSET = temp&((1<<5)|(1<<6)|(1<<7));
+	PORTC.OUTCLR = ~temp&((1<<5)|(1<<6)|(1<<7));
 	
-	mask = 1;
-	cur_dimm++;
-	if (cur_dimm == DIMM_RANGE_MAX)
+	if (port_mode&(1<<PORT_MODE_PWM_ENABLE))
 	{
-		cur_dimm = DIMM_RANGE_MIN;
-		for (port=0; port<PWM_PORT_COUNT; port++)
-		{
-			if ((uint8_t) (pwm_port[port].dimm_current > DIMM_RANGE_MIN)) port_mask |= mask;   // Einschalten wenn !0
-			mask = mask << 1;
-		}
-		// Assign outputs
-		if (port_mode&(1<<PORT_MODE_PWM_ENABLE))
-		{
-			PORTA.OUTSET = (port_mask&0b00000011)<<6;
-			PORTB.OUTSET = (port_mask&0b00001100)>>2;
-			PORTC.OUTCLR = (port_mask&0b00110000)>>4;
-			if (port_mode&(1<<PORT_MODE_PWM_CH7_ENABLE))
-				PORTA.OUTSET = (port_mask&0b01000000)>>1;
-		}		
-	}
-	else
-	{
-		for (port=0; port<PWM_PORT_COUNT; port++)
-		{
-			if (cur_dimm >= pwm_port[port].dimm_current) port_mask |= mask;
-			mask = mask << 1;
-		}
-		// Assign outputs
-		if (port_mode&(1<<PORT_MODE_PWM_ENABLE))
-		{
-			PORTA.OUTCLR = (port_mask&0b00000011)<<6;
-			PORTB.OUTCLR = (port_mask&0b00001100)>>2;
-			PORTC.OUTSET = (port_mask&0b00110000)>>4;
-			if (port_mode&(1<<PORT_MODE_PWM_CH7_ENABLE))
-				PORTA.OUTCLR = (port_mask&0b01000000)>>1;
-		}
+		temp = TCD2.CTRLC;
+		PORTA.OUTSET = temp&((1<<6)|(1<<7));
+		PORTA.OUTCLR = ~temp&((1<<6)|(1<<7));
+		
+		temp = TCC2.CTRLC>>3;
+		PORTB.OUTSET = temp&((1<<0)|(1<<1));
+		PORTB.OUTCLR = ~temp&((1<<0)|(1<<1));
 	}
 }
 
@@ -568,7 +539,7 @@ void pwm_init(void)
 	TCD2.CTRLE = TC2_BYTEM_SPLITMODE_gc;
 	TCD2.LPER = PWM_STEPS+1;
 	TCD2.HPER = PWM_STEPS+1;
-	TCD2.CTRLB = 0xFF; // Enable all compare channels
+	TCD2.CTRLB = (1<<0)|(1<<1)|(1<<5); // Enable compare channels PD0 PD1 PD5
 	TCD2.CTRLA = TC2_CLKSEL_EVCH3_gc;
 	
 	// Event CH3: 32 MHz / 4096 = 7812.5 Hz clock
