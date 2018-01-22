@@ -64,8 +64,9 @@ SV(15, "Port Digital Input Status", port_di, 0)
 #ifdef EEPROM_CFG
 uint8_t port_config;
 uint16_t port_do_select;
-uint16_t port_map_select_on[16];
-uint16_t port_map_select_off[16];
+uint16_t port_map_lut[16];
+uint16_t port_map_mux[16];
+uint8_t port_map_global[2];
 uint16_t port_brightness_select[2];
 int8_t port_brightness[4];
 
@@ -84,8 +85,8 @@ uint8_t relay_request;
 #ifdef EEPROM_DEFAULT
 .port_config = (1<<PORT_MODE_PULLUP_ENABLE),
 .port_do_select = 0,
-.port_map_select_on = {(1<<0), (1<<1), (1<<2), (1<<3), (1<<4), (1<<5), (1<<6), (1<<7), (1<<8), (1<<9), (1<<10), (1<<11), (1<<12), (1<<13), (1<<14), (1<<15)},
-.port_map_select_off = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+.port_map_lut = {240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240},
+.port_map_mux = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 .port_brightness_select = {0, 0},
 .port_brightness = {DIMM_RANGE_MAX, DIMM_RANGE_MIN+PWM_STEPS/4, DIMM_RANGE_MIN+PWM_STEPS/2, DIMM_RANGE_MIN+3*PWM_STEPS/4 },
 #endif
@@ -112,6 +113,13 @@ uint8_t relay_request;
 #define PORT_PIN5	(PORTD.IN&(1<<0)) // SIG_IS2_O	PD0
 #define PORT_PIN6	// SIG_S12_PWM	PC2
 #define PORT_PIN7	// SIG_S22_PWM	PC3
+
+// S1L - PA6
+// S1R - PA7
+// S1H - PB0
+// S2L - PB1
+// S2R - PC0
+// S2H - PC1
 
 #define PORT_PIN_STATUS(VAR)	do { \
 	uint8_t temp8;\

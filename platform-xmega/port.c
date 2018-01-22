@@ -576,20 +576,57 @@ ISR(TCD2_HUNF_vect)
 	TCD2.INTCTRLA = 0;
 }
 
+uint8_t port_do_get_global(uint8_t index)
+{
+	if (index<16)
+	{
+		return port_do&(1<<index) ? 1 : 0;
+	}
+	
+	return 0;
+}
 
 void port_do_mapping(void)
 {
 	uint8_t index;
+	uint8_t lut_bit, lut_mux1, lut_mux2, global1, global2;
 	uint16_t port_state_on = 0;
 	uint16_t port_state_off = 0;
+	
+	global1 = port_do_get_global(eeprom.port_map_global[0])<<1;
+	global2 = port_do_get_global(eeprom.port_map_global[1])<<0;
 	
 	// Determine new output state
 	for (index=0;index<16;index++)
 	{
 		if (port_do&(1<<index))
 		{
-			port_state_on |= eeprom.port_map_select_on[index];
-			port_state_off |= eeprom.port_map_select_off[index];
+			lut_bit = 0;
+			lut_mux1 = eeprom.port_map_mux[index]&0xF;
+			lut_mux2 = (eeprom.port_map_mux[index]>>4)&0xF;
+			
+			lut_bit = port_do&(1<<index) ? (1<<2) : 0;
+			
+			if (lut_mux1==index)
+			{
+				lut_bit |= global1;
+			}
+			else
+			{
+				lut_bit |= port_do&(1<<lut_mux1) ? (1<<1) : 0;
+			}
+			
+			if (lut_mux2==index)
+			{
+				lut_bit |= global2;
+			}
+			else
+			{
+				lut_bit |= port_do&(1<<lut_mux2) ? (1<<0) : 0;
+			}
+			
+			port_state_on |= eeprom.port_map_lut[index]&(1<<lut_bit) ? (1<<index) : 0;
+			
 		}
 	}
 	
