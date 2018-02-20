@@ -59,7 +59,6 @@ uint8_t ln_gpio_status_pre[LN_GPIO_BW];
 uint8_t ln_gpio_status_ack[LN_GPIO_BW];
 uint8_t ln_gpio_status_flag[LN_GPIO_BW];
 uint8_t ln_gpio_ack_counter[LN_GPIO_CH_COUNT];
-uint8_t ln_gpio_ack_count;
 uint8_t ln_wdt_flag;
 uint8_t ln_wdt_counter __attribute__ ((section (".noinit")));
 
@@ -267,7 +266,7 @@ void ln_gpio_process_tx(void)
 					if ((ln_gpio_status_ack[current_channel/8]&(1<<(current_channel%8)))==0)
 					{
 						ln_gpio_status_ack[current_channel/8] |= (1<<(current_channel%8));
-						ln_gpio_ack_counter[current_channel] = ln_gpio_ack_count;
+						ln_gpio_ack_counter[current_channel] = eeprom.ln_gpio_ack_count;
 					}
 				}
 			}
@@ -281,7 +280,7 @@ void ln_gpio_process_tx(void)
 					if ((ln_gpio_status_ack[current_channel/8]&(1<<(current_channel%8)))==0)
 					{
 						ln_gpio_status_ack[current_channel/8] |= (1<<(current_channel%8));
-						ln_gpio_ack_counter[current_channel] = ln_gpio_ack_count;
+						ln_gpio_ack_counter[current_channel] = eeprom.ln_gpio_ack_count;
 					}
 				}
 			}
@@ -298,7 +297,7 @@ void ln_gpio_process_tx(void)
 					if ((ln_gpio_status_ack[current_channel/8]&(1<<(current_channel%8)))==0)
 					{
 						ln_gpio_status_ack[current_channel/8] |= (1<<(current_channel%8));
-						ln_gpio_ack_counter[current_channel] = ln_gpio_ack_count;
+						ln_gpio_ack_counter[current_channel] = eeprom.ln_gpio_ack_count;
 					}
 				}
 			}
@@ -311,7 +310,7 @@ void ln_gpio_process_tx(void)
 					if ((ln_gpio_status_ack[current_channel/8]&(1<<(current_channel%8)))==0)
 					{
 						ln_gpio_status_ack[current_channel/8] |= (1<<(current_channel%8));
-						ln_gpio_ack_counter[current_channel] = ln_gpio_ack_count;
+						ln_gpio_ack_counter[current_channel] = eeprom.ln_gpio_ack_count;
 					}
 				}
 			}
@@ -367,7 +366,7 @@ uint8_t ln_create_message_ack(uint8_t *msg)
 		return (sendLocoNet4BytePacket(OPC_LONG_ACK, msg[0]&0x7F, 0x7F)==LN_DONE)?1:0;
 	}
 	
-	if (ln_gpio_ack_count>0)
+	if (eeprom.ln_gpio_ack_count>0)
 	{
 		return (sendLocoNet4BytePacket(msg[0]|(1<<7), msg[1], msg[2]^(1<<6))==LN_DONE)?1:0;
 	}
@@ -519,7 +518,7 @@ void ln_gpio_process_rx(lnMsg *LnPacket)
 			
 			ln_gpio_status_flag[index/16] |= (1<<((index/2)%8));
 		
-			if (ack && (ln_gpio_ack_count>0))
+			if (ack && (eeprom.ln_gpio_ack_count>0))
 			{
 				ln_gpio_tx_ack[index/16] |= (1<<((index/2)%8));
 			}
@@ -916,8 +915,8 @@ void ln_load_board_config(void)
 	{
 		eeprom.ln_gpio_opcode[index][0] = 0;
 	}
-	
+	/*
 	eeprom.ln_threshold = 50;
 	ACA.CTRLB = ((eeprom.ln_threshold/4)-1)&0x3F;
-	
+	*/
 }

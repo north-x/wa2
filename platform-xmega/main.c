@@ -49,6 +49,7 @@ struct process * const autostart_processes[] = {
 #define AUTOSTART_CFG
 #include "config.h"
 #undef AUTOSTART_CFG	
+NULL
 };
 
 void init(void)

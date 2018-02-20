@@ -47,6 +47,7 @@ PROCESS_THREAD(wa2_process, ev, data)
 	
 	// Initialization
 	rSlot.slot = 0xFF;
+	port_user = (port_user&(~((1<<0)|(1<<1)))) | (eeprom_status.relay_request&((1<<0)|(1<<1)));
 	
 	while (1)
 	{
@@ -69,11 +70,11 @@ PROCESS_THREAD(wa2_process, ev, data)
 			// Turn on relay if position greater than 127
 			if (servo[0].position_actual>127)
 			{
-				relay_request |= (1<<0);
+				port_user |= (1<<0);
 			}
 			else
 			{
-				relay_request &= ~(1<<0);		
+				port_user &= ~(1<<0);		
 			}
 			
 			// If we reached the final position, transmit a switch report
@@ -102,11 +103,11 @@ PROCESS_THREAD(wa2_process, ev, data)
 			// Turn on relay if position greater than 127
 			if (servo[1].position_actual>127)
 			{
-				relay_request |= (1<<1);
+				port_user |= (1<<1);
 			}
 			else
 			{
-				relay_request &= ~(1<<1);
+				port_user &= ~(1<<1);
 			}
 			
 			// If we reached the final position, transmit the new status

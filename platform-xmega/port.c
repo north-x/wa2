@@ -36,6 +36,7 @@
 #include "sys/etimer.h"
 #include "port.h"
 #include "eeprom.h"
+#include "ln_support.h"
 
 t_pwm_port pwm_port[PWM_PORT_COUNT];
 int8_t pwm_target[PWM_PORT_COUNT];
@@ -44,11 +45,11 @@ uint16_t pwm_update_trig;
 uint16_t pwm_update_cont;
 uint16_t pwm_at_setpoint;
 
-uint8_t port_mode;
 uint16_t port_do;
 uint16_t port_di;
-
-uint8_t cur_dimm;
+uint16_t port_di_mapped;
+uint16_t port_do_mapped;
+uint8_t port_user;
 
 static struct etimer port_timer;
 
@@ -56,8 +57,8 @@ PROCESS(port_process, "Port IO Handling");
 
 PROCESS_THREAD(port_process, ev, data)
 {
-	static uint8_t ct0, ct1;
-	uint8_t i, in;
+	static uint16_t ct0, ct1;
+	uint16_t i, in;
 	
 	PROCESS_BEGIN();
 	
@@ -76,9 +77,15 @@ PROCESS_THREAD(port_process, ev, data)
 		i &= ct0 & ct1;				// count until roll over ?
 		port_di ^= i;				// then toggle debounced state
 
+		port_do = ln_gpio_status[0] | (ln_gpio_status[1]<<8);
+		port_do_mapping();
 		relay_process();
 		pwm_step();
-		port_do_mapping();
+
+		// Overwrite status bits if dir=1 (LN output)
+		ln_gpio_status[0] = (ln_gpio_status[0]&(~ln_gpio_dir[0]))|(((uint8_t) port_di_mapped)&ln_gpio_dir[0]);
+		ln_gpio_status[1] = (ln_gpio_status[1]&(~ln_gpio_dir[1]))|(((uint8_t) (port_di_mapped>>8))&ln_gpio_dir[1]);
+		
 		etimer_reset(&port_timer);
 	}
 	
@@ -87,17 +94,13 @@ PROCESS_THREAD(port_process, ev, data)
 
 void port_update_configuration(void)
 {	
-	port_mode = eeprom.port_config;
 	port_di_init();
 	pwm_init();
 	relay_init();
-	port_do_mapping_init();
 }
 
 void port_init(void)
 {	
-	port_mode = eeprom.port_config;
-	
 	// S_Power is configured regardless of mode
 	PORTA.PIN5CTRL = PORT_INVEN_bm;
 	PORTA.OUTSET = (1<<5);
@@ -110,7 +113,7 @@ void port_init(void)
 
 void port_di_init(void)
 {
-	if (port_mode&(1<<PORT_MODE_PULLUP_ENABLE))
+	if (eeprom.port_config&(1<<PORT_MODE_PULLUP_ENABLE))
 	{
 		PORTC.PIN7CTRL = PORT_OPC_PULLUP_gc;
 		PORTC.PIN6CTRL = PORT_OPC_PULLUP_gc;
@@ -118,6 +121,15 @@ void port_di_init(void)
 		PORTD.PIN5CTRL = PORT_OPC_PULLUP_gc;
 		PORTD.PIN1CTRL = PORT_OPC_PULLUP_gc;
 		PORTD.PIN0CTRL = PORT_OPC_PULLUP_gc;
+		PORTC.PIN0CTRL = (PORTC.PIN0CTRL&(~PORT_OPC_gm))|PORT_OPC_PULLUP_gc;
+		PORTC.PIN1CTRL = (PORTC.PIN1CTRL&(~PORT_OPC_gm))|PORT_OPC_PULLUP_gc;
+		if (!(eeprom.port_config&(1<<PORT_MODE_RELAY)))
+		{
+			PORTA.PIN6CTRL = PORT_OPC_PULLUP_gc;
+			PORTA.PIN7CTRL = PORT_OPC_PULLUP_gc;
+			PORTB.PIN0CTRL = PORT_OPC_PULLUP_gc;
+			PORTB.PIN1CTRL = PORT_OPC_PULLUP_gc;
+		}
 	}
 	else
 	{
@@ -127,8 +139,36 @@ void port_di_init(void)
 		PORTD.PIN5CTRL = PORT_OPC_TOTEM_gc;
 		PORTD.PIN1CTRL = PORT_OPC_TOTEM_gc;
 		PORTD.PIN0CTRL = PORT_OPC_TOTEM_gc;
+		PORTC.PIN0CTRL = (PORTC.PIN0CTRL&(~PORT_OPC_gm))|PORT_OPC_TOTEM_gc;
+		PORTC.PIN1CTRL = (PORTC.PIN1CTRL&(~PORT_OPC_gm))|PORT_OPC_TOTEM_gc;
+		if (!(eeprom.port_config&(1<<PORT_MODE_RELAY)))
+		{
+			PORTA.PIN6CTRL = PORT_OPC_TOTEM_gc;
+			PORTA.PIN7CTRL = PORT_OPC_TOTEM_gc;
+			PORTB.PIN0CTRL = PORT_OPC_TOTEM_gc;
+			PORTB.PIN1CTRL = PORT_OPC_TOTEM_gc;
+		}
+	}
+
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 0, 2);
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 1, 3);
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 2, 7);
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 3, 6);
+	MAP_BITS(eeprom.port_dir, PORTD.DIR, 4, 5);
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 5, 5);
+	MAP_BITS(eeprom.port_dir, PORTD.DIR, 6, 1);
+	MAP_BITS(eeprom.port_dir, PORTD.DIR, 7, 0);
+	if (!(eeprom.port_config&(1<<PORT_MODE_RELAY)))
+	{
+		MAP_BITS(eeprom.port_dir, PORTA.DIR, 8, 6);
+		MAP_BITS(eeprom.port_dir, PORTA.DIR, 9, 7);
+		MAP_BITS(eeprom.port_dir, PORTB.DIR, 10, 0);
+		MAP_BITS(eeprom.port_dir, PORTB.DIR, 11, 1);
 	}
 	
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 12, 0);
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 13, 1);
+
 	// Initial key state
 	PORT_PIN_STATUS(port_di);
 }
@@ -139,7 +179,7 @@ uint8_t relay_request = 0;
 
 void relay_init(void)
 {
-	if (port_mode&(1<<PORT_MODE_PWM_ENABLE))
+	if (!(eeprom.port_config&(1<<PORT_MODE_RELAY)))
 	{
 		return;	
 	}
@@ -152,7 +192,7 @@ void relay_init(void)
 	PORTA.DIRSET = (1<<7)|(1<<6);
 	PORTB.DIRSET = (1<<0)|(1<<1);
 
-	if (port_mode&(1<<PORT_MODE_RELAY_MONOSTABLE))
+	if (eeprom.port_config&(1<<PORT_MODE_RELAY_MONOSTABLE))
 	{
 		PORTA.OUTSET |= (1<<6);
 	}
@@ -249,7 +289,7 @@ void relay_process(void)
 {
 	relay_governor();
 		
-	if (port_mode&(1<<PORT_MODE_RELAY_MONOSTABLE))
+	if (eeprom.port_config&(1<<PORT_MODE_RELAY_MONOSTABLE))
 	{
 		if (relay_cmd&RELAY_CMD_RIGHT1)
 			PORTA.OUTSET = (1<<7);
@@ -302,7 +342,7 @@ void relay_process(void)
 
 void servo_power_enable(void)
 {
-	if (!(port_mode&(1<<PORT_MODE_PWM_CH7_ENABLE)))
+	if (!(eeprom.port_config&(1<<PORT_MODE_PWM_CH7_ENABLE)))
 	{
 		PORTA.OUTCLR = (1<<5);
 	}
@@ -310,7 +350,7 @@ void servo_power_enable(void)
 
 void servo_power_disable(void)
 {
-	if (!(port_mode&(1<<PORT_MODE_PWM_CH7_ENABLE)))
+	if (!(eeprom.port_config&(1<<PORT_MODE_PWM_CH7_ENABLE)))
 	{
 		PORTA.OUTSET = (1<<5);
 	}
@@ -404,12 +444,15 @@ void servo_power_disable(void)
 
 void pwm_tick(void)
 {	
+	if (!(eeprom.port_config&(1<<PORT_MODE_PWM1_ENABLE)))
+		return;
+	
 	// PWM Output Mapping
 	uint8_t temp = TCD2.CTRLC<<3;
 	PORTC.OUTSET = temp&((1<<5)|(1<<6)|(1<<7));
 	PORTC.OUTCLR = ~temp&((1<<5)|(1<<6)|(1<<7));
 	
-	if (port_mode&(1<<PORT_MODE_PWM_ENABLE))
+	if (!(eeprom.port_config&(1<<PORT_MODE_RELAY)))
 	{
 		temp = TCD2.CTRLC;
 		PORTA.OUTSET = temp&((1<<6)|(1<<7));
@@ -458,12 +501,7 @@ void pwm_step(void)
 			pwm_port[index].dimm_delta = pwm_delta[index];
 			pwm_port[index].dimm_target = pwm_target[index];
 		}
-		
-		if (eeprom.port_do_select&(1<<index))
-		{
-			continue;
-		}
-		
+				
 		if (pwm_port[index].dimm_current==pwm_port[index].dimm_target)
 		{
 			pwm_at_setpoint |= (1<<index);
@@ -491,7 +529,9 @@ void pwm_step(void)
 
 void pwm_init(void)
 {
-	if (!(port_mode&(1<<PORT_MODE_PWM_ENABLE)))
+	uint8_t index;
+	
+	if (!(eeprom.port_config&(1<<PORT_MODE_PWM_ENABLE)))
 	{	
 		// Revert pins to inputs
 		PORTA.DIRCLR = (1<<6)|(1<<7);
@@ -511,8 +551,6 @@ void pwm_init(void)
 		return;
 	}
 	
-	cur_dimm = DIMM_RANGE_MIN;
-	
 	PORTA.PIN6CTRL = PORT_OPC_TOTEM_gc;
 	PORTA.PIN7CTRL = PORT_OPC_TOTEM_gc;
 	PORTB.PIN0CTRL = PORT_OPC_TOTEM_gc;
@@ -528,13 +566,21 @@ void pwm_init(void)
 	PORTB.DIRSET = (1<<1)|(1<<0);
 	PORTC.DIRSET = (1<<1)|(1<<0);
 	
-	// Enable Timer Type 2
-	TCC2.CTRLE = TC2_BYTEM_SPLITMODE_gc;
-	TCC2.LPER = PWM_STEPS+1;
-	TCC2.HPER = PWM_STEPS+1;
-	TCC2.CTRLB = 0xFF; // Enable all compare channels
-	TCC2.CTRLA = TC2_CLKSEL_EVCH3_gc;
-
+	for (index=0;index<PWM_PORT_COUNT;index++)
+	{
+		pwm_port[index].dimm_delta = eeprom.pwm_dimm_delta[index];
+	}
+	
+	if (eeprom.port_config&(1<<PORT_MODE_PWM2_ENABLE))
+	{
+		// Enable Timer Type 2
+		TCC2.CTRLE = TC2_BYTEM_SPLITMODE_gc;
+		TCC2.LPER = PWM_STEPS+1;
+		TCC2.HPER = PWM_STEPS+1;
+		TCC2.CTRLB = 0xFF; // Enable all compare channels
+		TCC2.CTRLA = TC2_CLKSEL_EVCH3_gc;
+	}
+	
 	// Enable Timer Type 2
 	TCD2.CTRLE = TC2_BYTEM_SPLITMODE_gc;
 	TCD2.LPER = PWM_STEPS+1;
@@ -545,7 +591,7 @@ void pwm_init(void)
 	// Event CH3: 32 MHz / 4096 = 7812.5 Hz clock
 	EVSYS.CH3MUX = EVSYS_CHMUX_PRESCALER_4096_gc;
 
-	// Enable interrupt on TCC2
+	// Enable interrupt on TCD2
 	TCD2.INTCTRLA = TC2_HUNFINTLVL_LO_gc;
 }
 
@@ -554,33 +600,52 @@ void pwm_init(void)
 ISR(TCD2_HUNF_vect)
 {
 	// Do housekeeping
-	TCC2.LCMPA = pwm_port[4].dimm_current>DIMM_RANGE_MIN ? pwm_port[4].dimm_current>DIMM_RANGE_MAX ? PWM_STEPS+1 : pwm_port[4].dimm_current : 0;
-	TCC2.LCMPB = pwm_port[6].dimm_current>DIMM_RANGE_MIN ? pwm_port[6].dimm_current - DIMM_RANGE_MIN : 0;
-	TCC2.LCMPC = pwm_port[1].dimm_current>DIMM_RANGE_MIN ? pwm_port[1].dimm_current - DIMM_RANGE_MIN : 0;
-	TCC2.LCMPD = pwm_port[3].dimm_current>DIMM_RANGE_MIN ? pwm_port[3].dimm_current>DIMM_RANGE_MAX ? PWM_STEPS+1 : pwm_port[3].dimm_current - DIMM_RANGE_MIN : 0;
-	TCC2.HCMPA = pwm_port[5].dimm_current>DIMM_RANGE_MIN ? pwm_port[5].dimm_current - DIMM_RANGE_MIN : 0;
-	TCC2.HCMPB = pwm_port[7].dimm_current>DIMM_RANGE_MIN ? pwm_port[7].dimm_current - DIMM_RANGE_MIN : 0;
-	TCC2.HCMPC = pwm_port[8].dimm_current>DIMM_RANGE_MIN ? pwm_port[8].dimm_current - DIMM_RANGE_MIN : 0;
-	TCC2.HCMPD = pwm_port[10].dimm_current>DIMM_RANGE_MIN ? pwm_port[10].dimm_current - DIMM_RANGE_MIN : 0;
+	if (TCC2.CTRLE==TC2_BYTEM_SPLITMODE_gc)
+	{
+		TCC2.LCMPA = pwm_port[4].dimm_current>DIMM_RANGE_MIN ? pwm_port[4].dimm_current>DIMM_RANGE_MAX ? PWM_STEPS+1 : pwm_port[4].dimm_current : 0;
+		TCC2.LCMPB = pwm_port[6].dimm_current>DIMM_RANGE_MIN ? pwm_port[6].dimm_current - DIMM_RANGE_MIN : 0;
+		TCC2.LCMPC = pwm_port[1].dimm_current>DIMM_RANGE_MIN ? pwm_port[1].dimm_current - DIMM_RANGE_MIN : 0;
+		TCC2.LCMPD = pwm_port[3].dimm_current>DIMM_RANGE_MIN ? pwm_port[3].dimm_current>DIMM_RANGE_MAX ? PWM_STEPS+1 : pwm_port[3].dimm_current - DIMM_RANGE_MIN : 0;
+		TCC2.HCMPA = pwm_port[5].dimm_current>DIMM_RANGE_MIN ? pwm_port[5].dimm_current - DIMM_RANGE_MIN : 0;
+		TCC2.HCMPB = pwm_port[7].dimm_current>DIMM_RANGE_MIN ? pwm_port[7].dimm_current - DIMM_RANGE_MIN : 0;
+		TCC2.HCMPC = pwm_port[8].dimm_current>DIMM_RANGE_MIN ? pwm_port[8].dimm_current - DIMM_RANGE_MIN : 0;
+		TCC2.HCMPD = pwm_port[10].dimm_current>DIMM_RANGE_MIN ? pwm_port[10].dimm_current - DIMM_RANGE_MIN : 0;
+	}
 	
-	TCD2.LCMPA = pwm_port[12].dimm_current>DIMM_RANGE_MIN ? pwm_port[12].dimm_current - DIMM_RANGE_MIN : 0;
-	TCD2.LCMPB = pwm_port[14].dimm_current>DIMM_RANGE_MIN ? pwm_port[14].dimm_current - DIMM_RANGE_MIN : 0;
-	TCD2.LCMPC = pwm_port[9].dimm_current>DIMM_RANGE_MIN ? pwm_port[9].dimm_current - DIMM_RANGE_MIN : 0;
-	TCD2.LCMPD = pwm_port[11].dimm_current>DIMM_RANGE_MIN ? pwm_port[11].dimm_current - DIMM_RANGE_MIN : 0;
-	TCD2.HCMPA = pwm_port[13].dimm_current>DIMM_RANGE_MIN ? pwm_port[13].dimm_current - DIMM_RANGE_MIN : 0;
-	TCD2.HCMPB = pwm_port[15].dimm_current>DIMM_RANGE_MIN ? pwm_port[15].dimm_current - DIMM_RANGE_MIN : 0;
-	TCD2.HCMPC = pwm_port[0].dimm_current>DIMM_RANGE_MIN ? pwm_port[0].dimm_current - DIMM_RANGE_MIN : 0;
-	TCD2.HCMPD = pwm_port[2].dimm_current>DIMM_RANGE_MIN ? pwm_port[2].dimm_current>DIMM_RANGE_MAX ? PWM_STEPS+1 : pwm_port[2].dimm_current - DIMM_RANGE_MIN : 0;
+	TCD2.LCMPA = pwm_port[7].dimm_current>DIMM_RANGE_MIN ? pwm_port[7].dimm_current - DIMM_RANGE_MIN : 0;
+	TCD2.LCMPB = pwm_port[6].dimm_current>DIMM_RANGE_MIN ? pwm_port[6].dimm_current - DIMM_RANGE_MIN : 0;
+	TCD2.LCMPC = pwm_port[5].dimm_current>DIMM_RANGE_MIN ? pwm_port[5].dimm_current - DIMM_RANGE_MIN : 0;
+	TCD2.LCMPD = pwm_port[3].dimm_current>DIMM_RANGE_MIN ? pwm_port[3].dimm_current - DIMM_RANGE_MIN : 0;
+	TCD2.HCMPA = pwm_port[2].dimm_current>DIMM_RANGE_MIN ? pwm_port[2].dimm_current - DIMM_RANGE_MIN : 0;
+	TCD2.HCMPB = pwm_port[4].dimm_current>DIMM_RANGE_MIN ? pwm_port[4].dimm_current - DIMM_RANGE_MIN : 0;
+	TCD2.HCMPC = pwm_port[8].dimm_current>DIMM_RANGE_MIN ? pwm_port[8].dimm_current - DIMM_RANGE_MIN : 0;
+	TCD2.HCMPD = pwm_port[9].dimm_current>DIMM_RANGE_MIN ? pwm_port[9].dimm_current - DIMM_RANGE_MIN : 0;
 	
 	// Disable interrupt
 	TCD2.INTCTRLA = 0;
 }
 
-uint8_t port_do_get_global(uint8_t index)
+uint8_t port_map_get_bit(uint8_t index)
 {
 	if (index<16)
 	{
 		return port_do&(1<<index) ? 1 : 0;
+	}
+	else if (index<32)
+	{
+		return port_di&(1<<(index-16)) ? 1 : 0;
+	}
+	else if (index<48)
+	{
+		return port_do_mapped&(1<<(index-32)) ? 1 : 0;
+	}
+	else if (index<64)
+	{
+		return port_di_mapped&(1<<(index-48)) ? 1 : 0;
+	}
+	else if ((index>=128) && (index<136))
+	{
+		return port_user&(1<<(index-128)) ? 1 : 0;
 	}
 	
 	return 0;
@@ -589,81 +654,125 @@ uint8_t port_do_get_global(uint8_t index)
 void port_do_mapping(void)
 {
 	uint8_t index;
-	uint8_t lut_bit, lut_mux1, lut_mux2, global1, global2;
-	uint16_t port_state_on = 0;
-	uint16_t port_state_off = 0;
-	
-	global1 = port_do_get_global(eeprom.port_map_global[0])<<1;
-	global2 = port_do_get_global(eeprom.port_map_global[1])<<0;
-	
-	// Determine new output state
+	uint8_t lut_bit;
+	uint16_t status;
+	uint16_t status_mapped = 0;
+		
+	// Determine new input or output state
 	for (index=0;index<16;index++)
 	{
-		if (port_do&(1<<index))
+		if (eeprom.port_map_dir&(1<<index))
 		{
-			lut_bit = 0;
-			lut_mux1 = eeprom.port_map_mux[index]&0xF;
-			lut_mux2 = (eeprom.port_map_mux[index]>>4)&0xF;
-			
-			lut_bit = port_do&(1<<index) ? (1<<2) : 0;
-			
-			if (lut_mux1==index)
+			status = port_do;
+		}
+		else
+		{
+			status = port_di;
+		}
+				
+		lut_bit = status&(1<<index) ? (1<<2) : 0;
+		
+		if (eeprom.port_map_mux1[index]<16)
+		{
+			lut_bit |= status&(1<<eeprom.port_map_mux1[index]) ? (1<<1) : 0;
+		}
+		else
+		{
+			lut_bit |= port_map_get_bit(eeprom.port_map_mux1[index])? (1<<1) : 0;
+		}
+		
+		if (eeprom.port_map_mux2[index]<16)
+		{
+			lut_bit |= status&(1<<eeprom.port_map_mux2[index]) ? (1<<0) : 0;
+		}
+		else
+		{
+			lut_bit |= port_map_get_bit(eeprom.port_map_mux2[index])? (1<<0) : 0;
+		}
+				
+		status_mapped |= (eeprom.port_map_lut[index]&(1<<lut_bit))? (1<<index) : 0;
+	}
+	
+	// Assign inputs and outputs (brightness)
+	for (index=0;index<16;index++)
+	{
+		if ((eeprom.port_map_dir&(1<<index))==0)
+		{
+			if (status_mapped&(1<<index))
 			{
-				lut_bit |= global1;
+				port_di_mapped |= (1<<index);
 			}
 			else
 			{
-				lut_bit |= port_do&(1<<lut_mux1) ? (1<<1) : 0;
+				port_di_mapped &= ~(1<<index);
 			}
-			
-			if (lut_mux2==index)
+		}
+		else
+		{
+			if ((status_mapped&(1<<index))==0)
 			{
-				lut_bit |= global2;
+				port_do_mapped |= (1<<index);
+				if (index<PWM_PORT_COUNT)
+				{
+					pwm_port[index].dimm_target = 0;
+				}
 			}
 			else
 			{
-				lut_bit |= port_do&(1<<lut_mux2) ? (1<<0) : 0;
+				port_do_mapped &= ~(1<<index);
+			
+				if (index<PWM_PORT_COUNT)
+				{
+			
+					uint8_t idx_reg = 0;
+		
+					for (uint8_t idx=0;idx<sizeof(eeprom.port_brightness_select)/sizeof(eeprom.port_brightness_select[0]);idx++)
+					{
+						idx_reg |= (eeprom.port_brightness_select[idx]&(1<<index)) ? (1<<idx) : 0;
+					}
+		
+					pwm_port[index].dimm_target = eeprom.port_brightness[idx_reg];
+				}
 			}
-			
-			port_state_on |= eeprom.port_map_lut[index]&(1<<lut_bit) ? (1<<index) : 0;
-			
 		}
 	}
 	
-	port_state_on &= ~port_state_off;
-	
-	// Assign brightness
-	for (index=0;index<16;index++)
+	if (!(eeprom.port_config&(1<<PORT_MODE_PWM1_ENABLE)))
 	{
-		if ((eeprom.port_do_select&(1<<index))==0)
+		MAP_BITS(port_do_mapped, PORTC.OUT, 2, 7);
+		MAP_BITS(port_do_mapped, PORTC.OUT, 3, 6);
+		MAP_BITS(port_do_mapped, PORTD.OUT, 4, 5);
+		MAP_BITS(port_do_mapped, PORTC.OUT, 5, 5);
+		MAP_BITS(port_do_mapped, PORTD.OUT, 6, 1);
+		MAP_BITS(port_do_mapped, PORTD.OUT, 7, 0);
+
+		if (!(eeprom.port_config&(1<<PORT_MODE_RELAY)))
 		{
-			continue;
+			MAP_BITS(port_do_mapped, PORTA.OUT, 8, 6);
+			MAP_BITS(port_do_mapped, PORTA.OUT, 9, 7);
 		}
-		
-		if ((port_state_on&(1<<index))==0)
-		{
-			pwm_port[index].dimm_current = 0;
-			//pwm_port[index].dimm_target = 0;
-			continue;
-		}
-		
-		uint8_t idx_reg = 0;
-		
-		for (uint8_t idx=0;idx<sizeof(eeprom.port_brightness_select)/sizeof(eeprom.port_brightness_select[0]);idx++)
-		{
-			idx_reg |= (eeprom.port_brightness_select[idx]&(1<<index)) ? (1<<idx) : 0;
-		}
-		
-		pwm_port[index].dimm_current = eeprom.port_brightness[idx_reg];
-		//pwm_port[index].dimm_target = port_brightness[idx_reg];
 	}
+	
+	if (!(eeprom.port_config&(1<<PORT_MODE_PWM2_ENABLE)))
+	{
+		if (!(eeprom.port_config&(1<<PORT_MODE_RELAY)))
+		{
+			MAP_BITS(port_do_mapped, PORTB.OUT, 10, 0);
+			MAP_BITS(port_do_mapped, PORTB.OUT, 11, 1);
+		}
+		
+		MAP_BITS(port_do_mapped, PORTC.OUT, 0, 2);
+		MAP_BITS(port_do_mapped, PORTC.OUT, 1, 3);
+		MAP_BITS(port_do_mapped, PORTC.OUT, 12, 0);
+		MAP_BITS(port_do_mapped, PORTC.OUT, 13, 1);
+
+	}
+		
+	MAP_BITS(port_do_mapped, relay_request, 14, 0);
+	MAP_BITS(port_do_mapped, relay_request, 15, 1);
+	
 	
 	// Trigger update by enabling interrupt of TCD2
 	TCD2.INTFLAGS = TC2_HUNFIF_bm;
 	TCD2.INTCTRLA = TC2_HUNFINTLVL_LO_gc;
-}
-
-void port_do_mapping_init(void)
-{
-		
 }

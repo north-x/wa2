@@ -52,10 +52,13 @@
  */
 #ifdef SV_CFG
 SV(6, "Port Configuration Register", eeprom.port_config, port_update_configuration)
-SV(13, "Port Digital Output Select", eeprom.port_do_select, 0)
-SV(14, "Port Digital Output Cmd", port_do, 0)
-SV(15, "Port Digital Input Status", port_di, 0)
-
+SV_LSB(13, "Port Direction Register L", eeprom.port_dir, port_update_configuration)
+SV_MSB(14, "Port Direction Register H", eeprom.port_dir, port_update_configuration)
+SV(15, "Port Digital Output Cmd", port_user, 0)
+SV(16, "Port Digital Input Status", port_di, 0)
+SV_LSB(17, "Port Map Direction Register L", eeprom.port_map_dir, 0)
+SV_MSB(18, "Port Map Direction Register L", eeprom.port_map_dir, 0)
+SV(19, "Port Brightness 0", eeprom.port_brightness_select[0], 0)
 #endif
 
 /*
@@ -63,13 +66,14 @@ SV(15, "Port Digital Input Status", port_di, 0)
  */
 #ifdef EEPROM_CFG
 uint8_t port_config;
-uint16_t port_do_select;
+uint16_t port_dir;
+uint16_t port_map_dir;
 uint16_t port_map_lut[16];
-uint16_t port_map_mux[16];
-uint8_t port_map_global[2];
+uint8_t port_map_mux1[16];
+uint8_t port_map_mux2[16];
 uint16_t port_brightness_select[2];
 int8_t port_brightness[4];
-
+uint8_t pwm_dimm_delta[14];
 #endif
 
 /*
@@ -83,12 +87,15 @@ uint8_t relay_request;
  *	EEPROM Confiuration Variable Default Configuration
  */
 #ifdef EEPROM_DEFAULT
-.port_config = (1<<PORT_MODE_PULLUP_ENABLE),
-.port_do_select = 0,
-.port_map_lut = {240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240},
-.port_map_mux = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
+.port_config = (1<<PORT_MODE_PULLUP_ENABLE)|(1<<PORT_MODE_RELAY)|(1<<PORT_MODE_PWM_ENABLE)|(1<<PORT_MODE_PWM1_ENABLE),
+.port_dir = (1<<0)|(1<<1),
+.port_map_dir = ((1<<14)|(1<<15)),
+.port_map_lut = {240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 240, 204, 204},
+.port_map_mux1 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 128, 129},
+.port_map_mux2 = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
 .port_brightness_select = {0, 0},
 .port_brightness = {DIMM_RANGE_MAX, DIMM_RANGE_MIN+PWM_STEPS/4, DIMM_RANGE_MIN+PWM_STEPS/2, DIMM_RANGE_MIN+3*PWM_STEPS/4 },
+.pwm_dimm_delta = {PWM_STEPS+1, PWM_STEPS+1, PWM_STEPS+1, PWM_STEPS+1, PWM_STEPS+1, PWM_STEPS+1, PWM_STEPS+1},
 #endif
 
 /*
@@ -105,32 +112,40 @@ uint8_t relay_request;
 #ifndef PORT_H_
 #define PORT_H_
 
-#define PORT_PIN0	(PORTC.IN&(1<<7)) // SIG_IS1_RX	PC7
-#define PORT_PIN1	(PORTC.IN&(1<<6)) // SIG_IS2_RX	PC6
-#define PORT_PIN2	(PORTD.IN&(1<<5)) // SIG_IS1_TX	PD5
-#define PORT_PIN3	(PORTC.IN&(1<<5)) // SIG_IS2_TX	PC5
-#define PORT_PIN4	(PORTD.IN&(1<<1)) // SIG_IS1_O	PD1
-#define PORT_PIN5	(PORTD.IN&(1<<0)) // SIG_IS2_O	PD0
-#define PORT_PIN6	// SIG_S12_PWM	PC2
-#define PORT_PIN7	// SIG_S22_PWM	PC3
+#define MAP_BITS(SRC_REG, DEST_REG, SRC_BIT, DEST_BIT) if (SRC_REG&(1<<(SRC_BIT))) DEST_REG |= (1<<(DEST_BIT)); else DEST_REG &= ~(1<<(DEST_BIT))
 
-// S1L - PA6
-// S1R - PA7
-// S1H - PB0
-// S2L - PB1
-// S2R - PC0
-// S2H - PC1
+#define PORT_PIN0	(PORTC.IN&(1<<2)) // SIG_S12_PWMPC2
+#define PORT_PIN1	(PORTC.IN&(1<<3)) // SIG_S22_PWMPC3
+#define PORT_PIN2	(PORTC.IN&(1<<7)) // SIG_IS1_RX	PC7
+#define PORT_PIN3	(PORTC.IN&(1<<6)) // SIG_IS2_RX	PC6
+#define PORT_PIN4	(PORTD.IN&(1<<5)) // SIG_IS1_TX	PD5
+#define PORT_PIN5	(PORTC.IN&(1<<5)) // SIG_IS2_TX	PC5
+#define PORT_PIN6	(PORTD.IN&(1<<1)) // SIG_IS1_O	PD1
+#define PORT_PIN7	(PORTD.IN&(1<<0)) // SIG_IS2_O	PD0
+#define PORT_PIN8	(PORTA.IN&(1<<6)) // S1L - PA6
+#define PORT_PIN9	(PORTA.IN&(1<<7)) // S1R - PA7
+#define PORT_PIN10	(PORTB.IN&(1<<0)) // S1H - PB0
+#define PORT_PIN11	(PORTB.IN&(1<<1)) // S2L - PB1
+#define PORT_PIN12	(PORTC.IN&(1<<0)) // S2R - PC0
+#define PORT_PIN13	(PORTC.IN&(1<<1)) // S2H - PC1
 
 #define PORT_PIN_STATUS(VAR)	do { \
-	uint8_t temp8;\
-	temp8 = PORT_PIN0?1:0; \
-	temp8 |= PORT_PIN1?2:0; \
-	temp8 |= PORT_PIN2?4:0; \
-	temp8 |= PORT_PIN3?8:0; \
-	temp8 |= PORT_PIN4?16:0; \
-	temp8 |= PORT_PIN5?32:0; \
-	temp8 |= (ACA.STATUS&AC_AC0STATE_bm)?64:0; \
-	VAR = temp8; \
+	uint16_t temp16;\
+	temp16 = PORT_PIN0?1:0; \
+	temp16 |= PORT_PIN1?2:0; \
+	temp16 |= PORT_PIN2?4:0; \
+	temp16 |= PORT_PIN3?8:0; \
+	temp16 |= PORT_PIN4?16:0; \
+	temp16 |= PORT_PIN5?32:0; \
+	temp16 |= PORT_PIN6?64:0; \
+	temp16 |= PORT_PIN7?128:0; \
+	temp16 |= PORT_PIN8?256:0; \
+	temp16 |= PORT_PIN9?512:0; \
+	temp16 |= PORT_PIN10?1024:0; \
+	temp16 |= PORT_PIN11?2048:0; \
+	temp16 |= PORT_PIN12?4096:0; \
+	temp16 |= PORT_PIN13?8192:0; \
+	VAR = temp16; \
 } while (0);
 
 
@@ -140,8 +155,11 @@ uint8_t relay_request;
 #define PORT_MODE_PWM_CH7_ENABLE	1
 #define PORT_MODE_PULLUP_ENABLE		2
 #define PORT_MODE_RELAY_MONOSTABLE	3
+#define PORT_MODE_RELAY				4
+#define PORT_MODE_PWM1_ENABLE		5
+#define PORT_MODE_PWM2_ENABLE		6
 
-#define PWM_PORT_COUNT	7
+#define PWM_PORT_COUNT	14
 
 #define PWM_TIMER_PRESCALER	8
 #define PWM_TICK_PERIOD     250L        // 250us tick for PWM Engine
@@ -177,15 +195,14 @@ void port_update_configuration(void);
 void port_di_init(void);
 
 void port_do_mapping(void);
-void port_do_mapping_init(void);
 
 void pwm_init(void);
 void pwm_tick(void);
 void pwm_step(void);
 
-extern uint16_t port_do_select;
 extern uint16_t port_do;
 extern uint16_t port_di;
+extern uint8_t port_user;
 
 extern uint8_t port_mode;
 

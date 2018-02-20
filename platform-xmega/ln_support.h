@@ -177,7 +177,6 @@ extern uint8_t ln_gpio_status[LN_GPIO_BW];
 extern uint8_t ln_gpio_status_pre[LN_GPIO_BW];
 extern uint8_t ln_gpio_status_ack[LN_GPIO_BW];
 extern uint8_t ln_gpio_status_flag[LN_GPIO_BW];
-extern uint8_t ln_gpio_ack_count;
 extern uint8_t ln_wdt_counter;
 
 void loconet_init(void);

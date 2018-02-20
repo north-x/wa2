@@ -261,13 +261,21 @@ void servo_init(void)
 	// Enable low priority interrupt
 	TCC0.INTCTRLA = TC_OVFINTLVL_LO_gc;
 	
-	//Note: Compare units can be enabled by the following statements
-	//TCC0.CTRLB |= TC0_CCAEN_bm; etc
+	if (servo_status&(1<<SERVO_STATUS_ENABLE_PWM_A))
+	{
+		TCC0.CTRLB |= ((1<<(S12_PWM+4))|(1<<(S22_PWM+4)));
+		PORTC.DIRSET = (1<<S12_PWM)|(1<<S22_PWM);
+		eeprom.port_dir |= (1<<0)|(1<<1);
+	}
 	
-	PORTC.OUTSET = (1<<S12_PWM)|(1<<S22_PWM);
-	PORTC.DIRSET = (1<<S12_PWM)|(1<<S22_PWM);
-	
-	TCC0.CTRLB = (1<<(S12_PWM+4)) | (1<<(S22_PWM+4)) | TC_WGMODE_SINGLESLOPE_gc;
+	if (servo_status&(1<<SERVO_STATUS_ENABLE_PWM_B))
+	{
+		TCC0.CTRLB |= ((1<<(S1_PWM+4))|(1<<(S2_PWM+4)));
+		PORTC.PIN0CTRL |= PORT_INVEN_bm;
+		PORTC.PIN1CTRL |= PORT_INVEN_bm;
+		PORTC.DIRSET = (1<<S1_PWM)|(1<<S2_PWM);
+		eeprom.port_dir |= (1<<12)|(1<<13);
+	}
 	
 	// Startup delay
 	servo_timer = eeprom.servo_startup_delay;
@@ -278,6 +286,12 @@ PROCESS_THREAD(servo_process, ev, data)
 {
 	uint8_t index;
 	PROCESS_BEGIN();
+	
+	// Check configuration
+	if (!(eeprom.servo_config&((1<<SERVO_STATUS_ENABLE_PWM_A)|(1<<SERVO_STATUS_ENABLE_PWM_B))))
+	{
+		process_exit(PROCESS_CURRENT());
+	}
 	
 	// Initialization
 	servo_init();
@@ -585,7 +599,7 @@ void servo_update_configuration(void)
 void servo_mode_update(void)
 {	
 	servo_start_method = eeprom.servo_start_method;
-	servo_status = eeprom.servo_config&(servo_status&~((1<<SERVO_STATUS_PWR_ALWAYS_ON)|(1<<SERVO_STATUS_ENABLE_PWM_A)|(1<<SERVO_STATUS_ENABLE_PWM_B)));
+	servo_status = eeprom.servo_config|(servo_status&~((1<<SERVO_STATUS_PWR_ALWAYS_ON)|(1<<SERVO_STATUS_ENABLE_PWM_A)|(1<<SERVO_STATUS_ENABLE_PWM_B)));
 	
 	if (servo_status&(1<<SERVO_STATUS_ENABLE_PWM_A))
 		TCC0.CTRLB |= ((1<<(S12_PWM+4))|(1<<(S22_PWM+4)));
