@@ -41,6 +41,7 @@
 #include "ln_support.h"
 #include "usb_support.h"
 #include "config.h"
+#include "sys/utils.h"
 
 PROCESS(ln_process, "Loconet Handler");
 PROCESS(ln_ack_process, "Loconet Ack Handler");
@@ -51,7 +52,6 @@ static struct etimer ln_wdt_timer;
 
 LnBuf LnBuffer;
 
-uint8_t ln_gpio_dir[LN_GPIO_BW];
 uint8_t ln_gpio_tx[LN_GPIO_BW];
 uint8_t ln_gpio_tx_ack[LN_GPIO_BW];
 uint8_t ln_gpio_status[LN_GPIO_BW];
@@ -75,6 +75,12 @@ void loconet_init(void)
 		eeprom.sv_serial_number = deviceID;
 		ln_load_board_config();
 		eeprom_sync_storage();
+		
+		// Issue a software reset
+		/*
+		CCP = CCP_IOREG_gc;
+		RST.CTRL = RST_SWRST_bm;
+		*/
 	}
 	
 	if (readSVDestinationId()==0xFFFF)
@@ -83,7 +89,21 @@ void loconet_init(void)
 	}
 	
 	process_start(&ln_ack_process, NULL);
-	process_start(&ln_wdt_process, NULL);
+	
+	// Start Watchdog process if requested
+	if (eeprom.ln_wdt_enable)
+	{
+		// Enable watchdog if the fuses are not configured
+		if (!(WDT.CTRL&WDT_ENABLE_bm))
+		{
+			wdt_enable(WDT_PER_8KCLK_gc);
+		}
+		process_start(&ln_wdt_process, NULL);
+	}
+	else
+	{
+		ln_wdt_counter = 0;
+	}
 }
 
 void ln_update_threshold(void)
@@ -113,7 +133,6 @@ PROCESS_THREAD(ln_wdt_process, ev, data)
 		RST.STATUS = RST_WDRF_bm;
 	}
 	
-	//wdt_enable(WDT_PER_8KCLK_gc);
 	wdt_msg.data[0] = 0x80;
 	etimer_set(&ln_wdt_timer, deviceID/256 + 2.5*CLOCK_SECOND);
 	
@@ -221,7 +240,7 @@ PROCESS_THREAD(ln_process, ev, data)
 				// Force transmission of current state
 				for (index=0;index<LN_GPIO_BW;index++)
 				{
-					ln_gpio_tx[index] = ~ln_gpio_dir[index];
+					ln_gpio_tx[index] = ~eeprom.ln_gpio_dir[index];
 				}
 			}
 			/*
@@ -253,7 +272,7 @@ void ln_gpio_process_tx(void)
 	if (((ln_gpio_status[current_channel/8]^ln_gpio_status_pre[current_channel/8])|ln_gpio_tx[current_channel/8])&(1<<(current_channel%8)))
 	{
 		// Check direction
-		if (ln_gpio_dir[current_channel/8]&(1<<(current_channel%8)))
+		if (eeprom.ln_gpio_dir[current_channel/8]&(1<<(current_channel%8)))
 		{
 			// Transmit opcode if output (dir=1)
 			if (ln_gpio_status[current_channel/8]&(1<<(current_channel%8)))
@@ -418,7 +437,7 @@ void ln_gpio_process_rx(lnMsg *LnPacket)
 				if ((LnPacket->srq.sw2&(1<<6))==0)
 				{
 					// Ack Command if direction input (==0)
-					if ((ln_gpio_dir[index/16]&(1<<((index/2)%8)))==0)
+					if ((eeprom.ln_gpio_dir[index/16]&(1<<((index/2)%8)))==0)
 					{
 						cmd = 1;
 						ack = 1;
@@ -456,7 +475,7 @@ void ln_gpio_process_rx(lnMsg *LnPacket)
 					if ((LnPacket->srq.sw2&(1<<6))!=0)
 					{
 						// Ack Command if direction input (==0)
-						if ((ln_gpio_dir[index/16]&(1<<((index/2)%8)))==0)
+						if ((eeprom.ln_gpio_dir[index/16]&(1<<((index/2)%8)))==0)
 						{
 							cmd = 1;
 							ack = 1;
@@ -480,7 +499,7 @@ void ln_gpio_process_rx(lnMsg *LnPacket)
 				if ((LnPacket->srq.sw2&(1<<6))!=0)
 				{
 					// Ack Command if direction input (==0)
-					if ((ln_gpio_dir[index/16]&(1<<((index/2)%8)))==0)
+					if ((eeprom.ln_gpio_dir[index/16]&(1<<((index/2)%8)))==0)
 					{
 						cmd = 1;
 						ack = 1;

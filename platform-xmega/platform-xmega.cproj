@@ -244,6 +244,9 @@
     <Compile Include="sys\arg.h">
       <SubType>compile</SubType>
     </Compile>
+    <Compile Include="sys\build_defs.h">
+      <SubType>compile</SubType>
+    </Compile>
     <Compile Include="sys\cc.h">
       <SubType>compile</SubType>
     </Compile>

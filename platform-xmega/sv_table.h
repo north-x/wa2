@@ -45,19 +45,9 @@
 #include "ln_buf.h"
 
 void cmd_exec(void);
-void tse_update_page_read(void);
-void tse_update_page_write(void);
-void tse_update_time_ratio(void);
-void dimm_target_parameter_update(void);
-void dimm_delta_parameter_update(void);
-void ln_update_threshold(void);
 
-extern LnBuf LnBuffer;
 extern rwSlotDataMsg rSlot;
 
-uint8_t dimm_target_temp;
-uint8_t dimm_delta_temp;
-uint8_t dimm_parameter_select;
 uint8_t cmd_register = 0;
 
 
@@ -90,7 +80,9 @@ void cmd_exec(void)
 			eeprom_sync_storage();
 			break;
 		case 2:
-			wdt_enable(WDTO_1S);
+			// Software reset
+			CCP = CCP_IOREG_gc;
+			RST.CTRL = RST_SWRST_bm;
 			break;
 		case 3:
 			eeprom_load_defaults();
@@ -107,30 +99,5 @@ void cmd_exec(void)
 	cmd_register = 0;
 }
 
-void dimm_target_parameter_update(void)
-{
-	uint8_t index;
-	
-	for (index=0;index<PWM_PORT_COUNT;index++)
-	{
-		if (dimm_parameter_select&(1<<index))
-		{
-			pwm_port[index].dimm_target = dimm_target_temp;
-		}
-	}
-}
-
-void dimm_delta_parameter_update(void)
-{
-	uint8_t index;
-
-	for (index=0;index<PWM_PORT_COUNT;index++)
-	{
-		if (dimm_parameter_select&(1<<index))
-		{
-			pwm_port[index].dimm_delta = dimm_delta_temp;
-		}
-	}
-}
 
 #endif /* PARAMETER_TABLE_H_ */

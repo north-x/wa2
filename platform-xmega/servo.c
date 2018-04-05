@@ -56,7 +56,7 @@ volatile uint8_t servo_status = 0;
 volatile uint16_t servo_timer = 0;
 volatile uint8_t servo_timer2 = 0;
 uint8_t servo_delay = 3;
-uint8_t servo_start_method = 1;
+uint8_t servo_start_method = 0;
 
 volatile enum _ServoIsrState
 {
@@ -65,7 +65,6 @@ volatile enum _ServoIsrState
 	SI_TURNON_WAIT_1,
 	SI_TURNON_2,
 	SI_TURNON_WAIT_2,
-	SI_TURNON_3,
 	SI_RUNNING
 } ServoIsrState = SI_IDLE;
 
@@ -418,19 +417,21 @@ void servo_isr(void)
 			{
 				default:
 				case 0:
-					servo_isr_timer = servo_delay;
-#if defined(__AVR_XMEGA__)
-					TCC0.CCABUF = servo[1].pulse_value;
-					TCC0.CCBBUF = servo[0].pulse_value;
-					TCC0.CCCBUF = servo[0].pulse_value;
-					TCC0.CCDBUF = servo[1].pulse_value;
+#if defined(__18CXX)
+					LATDbits.LATD0 = 0;
+					LATDbits.LATD2 = 0;
+#elif defined (__AVR_XMEGA__)
+					TCC0.CCA = 0;
+					TCC0.CCB = 0;
+					TCC0.CCC = 0;
+					TCC0.CCD = 0;
 #elif defined(__AVR__)
-					OCR1A = servo[0].pulse_value;
-					OCR1B = servo[1].pulse_value;
+					OCR1A = 0;
+					OCR1B = 0;
 #endif
+					servo_isr_timer = servo_delay;
 					break;
 				case 1:
-				case 2:
 #if defined(__18CXX)
 					LATDbits.LATD0 = 1;
 					LATDbits.LATD2 = 1;
@@ -445,20 +446,17 @@ void servo_isr(void)
 #endif
 					servo_isr_timer = servo_delay;
 					break;
-				case 3:
-#if defined(__18CXX)
-					LATDbits.LATD0 = 0;
-					LATDbits.LATD2 = 0;
-#elif defined (__AVR_XMEGA__)
-					TCC0.CCA = 0;
-					TCC0.CCB = 0;
-					TCC0.CCC = 0;
-					TCC0.CCD = 0;
-#elif defined(__AVR__)
-					OCR1A = 0;
-					OCR1B = 0;
-#endif
+				case 2:
 					servo_isr_timer = servo_delay;
+#if defined(__AVR_XMEGA__)
+					TCC0.CCABUF = servo[1].pulse_value;
+					TCC0.CCBBUF = servo[0].pulse_value;
+					TCC0.CCCBUF = servo[0].pulse_value;
+					TCC0.CCDBUF = servo[1].pulse_value;
+#elif defined(__AVR__)
+					OCR1A = servo[0].pulse_value;
+					OCR1B = servo[1].pulse_value;
+#endif
 					break;
 			}
 			ServoIsrState = SI_TURNON_WAIT_1;
@@ -485,28 +483,6 @@ void servo_isr(void)
 			if (servo_isr_timer)
 			{
 				break;
-			}
-			ServoIsrState = SI_TURNON_3;
-		case SI_TURNON_3:
-			switch (servo_start_method)
-			{
-				case 2:
-#if defined(__18CXX)
-					LATDbits.LATD0 = 0;
-					LATDbits.LATD2 = 0;
-
-					// Reset Timer
-				    TMR3H = 0;
-				    TMR3L = 0;
-
-				    // Start Timer
-				    T3CONbits.TMR3ON = 1;
-					
-					while (TMR3L<128);
-#endif
-					break;
-				default:
-					break;
 			}
 
 			servo_status |= (1<<SERVO_STATUS_PWR);

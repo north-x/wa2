@@ -42,8 +42,10 @@ t_pwm_port pwm_port[PWM_PORT_COUNT];
 int8_t pwm_target[PWM_PORT_COUNT];
 uint8_t pwm_delta[PWM_PORT_COUNT];
 uint16_t pwm_update_trig;
-uint16_t pwm_update_cont;
 uint16_t pwm_at_setpoint;
+uint8_t pwm_target_temp;
+uint8_t pwm_delta_temp;
+uint16_t pwm_parameter_select;
 
 uint16_t port_do;
 uint16_t port_di;
@@ -83,8 +85,8 @@ PROCESS_THREAD(port_process, ev, data)
 		pwm_step();
 
 		// Overwrite status bits if dir=1 (LN output)
-		ln_gpio_status[0] = (ln_gpio_status[0]&(~ln_gpio_dir[0]))|(((uint8_t) port_di_mapped)&ln_gpio_dir[0]);
-		ln_gpio_status[1] = (ln_gpio_status[1]&(~ln_gpio_dir[1]))|(((uint8_t) (port_di_mapped>>8))&ln_gpio_dir[1]);
+		ln_gpio_status[0] = (ln_gpio_status[0]&(~eeprom.ln_gpio_dir[0]))|(((uint8_t) port_di_mapped)&eeprom.ln_gpio_dir[0]);
+		ln_gpio_status[1] = (ln_gpio_status[1]&(~eeprom.ln_gpio_dir[1]))|(((uint8_t) (port_di_mapped>>8))&eeprom.ln_gpio_dir[1]);
 		
 		etimer_reset(&port_timer);
 	}
@@ -495,11 +497,13 @@ void pwm_step(void)
 	
 	for (index=0;index<PWM_PORT_COUNT;index++)
 	{
-		if ((pwm_update_trig&(1<<index))!=0 || (pwm_update_cont&(1<<index))!=0)
+		if ((pwm_update_trig&(1<<index))!=0)
 		{
-			pwm_update_trig &= ~(1<<index);
-			pwm_port[index].dimm_delta = pwm_delta[index];
+			pwm_port[index].dimm_delta = eeprom.pwm_delta[index];
 			pwm_port[index].dimm_target = pwm_target[index];
+			if (!(eeprom.port_config&(1<<PORT_MODE_PWM_UPDATE_CONT))) {
+				pwm_update_trig &= ~(1<<index);			
+			}
 		}
 				
 		if (pwm_port[index].dimm_current==pwm_port[index].dimm_target)
@@ -568,7 +572,7 @@ void pwm_init(void)
 	
 	for (index=0;index<PWM_PORT_COUNT;index++)
 	{
-		pwm_port[index].dimm_delta = eeprom.pwm_dimm_delta[index];
+		pwm_port[index].dimm_delta = eeprom.pwm_delta[index];
 	}
 	
 	if (eeprom.port_config&(1<<PORT_MODE_PWM2_ENABLE))
@@ -775,4 +779,30 @@ void port_do_mapping(void)
 	// Trigger update by enabling interrupt of TCD2
 	TCD2.INTFLAGS = TC2_HUNFIF_bm;
 	TCD2.INTCTRLA = TC2_HUNFINTLVL_LO_gc;
+}
+
+void pwm_target_parameter_update(void)
+{
+	uint8_t index;
+	
+	for (index=0;index<PWM_PORT_COUNT;index++)
+	{
+		if (pwm_parameter_select&(1<<index))
+		{
+			pwm_port[index].dimm_target = pwm_target_temp;
+		}
+	}
+}
+
+void pwm_delta_parameter_update(void)
+{
+	uint8_t index;
+
+	for (index=0;index<PWM_PORT_COUNT;index++)
+	{
+		if (pwm_parameter_select&(1<<index))
+		{
+			pwm_port[index].dimm_delta = pwm_delta_temp;
+		}
+	}
 }
