@@ -54,12 +54,19 @@
 //SV(22, "SV No22", sv_no_22, 0)
 //SV_LSB(23, "LSB of sv16bit", eeprom.test_config16, update_function)
 //SV_MSB(24, "MSB of sv16bit", eeprom.test_config16, 0)
+SV(257, "Servo Multipos Opcode Select", eeprom.servo_multipos_opcode, 0)
+SV(258, "Servo 1 Multipos Off", eeprom.servo_multipos[0][0], 0)
+SV(259, "Servo 1 Multipos On", eeprom.servo_multipos[0][1], 0)
+SV(260, "Servo 2 Multipos Off", eeprom.servo_multipos[1][0], 0)
+SV(261, "Servo 2 Multipos On", eeprom.servo_multipos[1][1], 0)
 #endif
 
 /*
  *	EEPROM Configuration Variable Definition
  */
 #ifdef EEPROM_CFG
+uint8_t servo_multipos_opcode;
+uint8_t servo_multipos[2][2];
 //uint16_t test_config16;
 //uint8_t test_config_array[2];
 #endif
@@ -75,6 +82,8 @@
  *	EEPROM Confiuration Variable Default Configuration
  */
 #ifdef EEPROM_DEFAULT
+.servo_multipos_opcode = 0,
+.servo_multipos = {{64, 192}, {64, 192}},
 //.test_config16 = 12345,
 //.test_config_array = {16, 16},
 #endif

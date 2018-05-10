@@ -85,6 +85,35 @@ PROCESS_THREAD(wa2_process, ev, data)
 			}
 			
 		}
+		else if ((eeprom.servo_multipos_opcode&0x0F) && (ln_gpio_status_flag[(eeprom.servo_multipos_opcode&0xF)/8]&(1<<((eeprom.servo_multipos_opcode&0xF)%8))))
+		{
+			// Set new position accordingly
+			if (ln_gpio_status[(eeprom.servo_multipos_opcode&0xF)/8]&(1<<((eeprom.servo_multipos_opcode&0xF)%8)))
+			{
+				servo[0].position_setpoint = eeprom.servo_multipos[0][1];
+			}
+			else
+			{
+				servo[0].position_setpoint = eeprom.servo_multipos[0][0];
+			}
+			// Turn on relay if position greater than 127
+			if (servo[0].position_actual>127)
+			{
+				port_user |= (1<<0);
+			}
+			else
+			{
+				port_user &= ~(1<<0);
+			}
+			
+			// If we reached the final position, transmit a switch report
+			if (servo[0].position_actual==servo[0].position_setpoint)
+			{
+				ln_gpio_tx[(eeprom.servo_multipos_opcode&0xF)/8] |= (1<<((eeprom.servo_multipos_opcode&0xF)%8));
+				ln_gpio_status_flag[(eeprom.servo_multipos_opcode&0xF)/8] &= ~(1<<((eeprom.servo_multipos_opcode&0xF)%8));
+			}
+			
+		}
 		
 		// Servo 2
 		// Check if a new command was received
@@ -115,6 +144,35 @@ PROCESS_THREAD(wa2_process, ev, data)
 			{
 				ln_gpio_tx[0] |= (1<<1);
 				ln_gpio_status_flag[0] &= ~(1<<1);
+			}
+			
+		}
+		else if ((eeprom.servo_multipos_opcode&0xF0) && (ln_gpio_status_flag[(eeprom.servo_multipos_opcode>>4)/8]&(1<<((eeprom.servo_multipos_opcode>>4)%8))))
+		{
+			// Set new position accordingly
+			if (ln_gpio_status[(eeprom.servo_multipos_opcode>>4)/8]&(1<<((eeprom.servo_multipos_opcode>>4)%8)))
+			{
+				servo[1].position_setpoint = eeprom.servo_multipos[1][1];
+			}
+			else
+			{
+				servo[1].position_setpoint = eeprom.servo_multipos[1][0];
+			}
+			// Turn on relay if position greater than 127
+			if (servo[1].position_actual>127)
+			{
+				port_user |= (1<<1);
+			}
+			else
+			{
+				port_user &= ~(1<<1);
+			}
+			
+			// If we reached the final position, transmit a switch report
+			if (servo[1].position_actual==servo[1].position_setpoint)
+			{
+				ln_gpio_tx[(eeprom.servo_multipos_opcode>>4)/8] |= (1<<((eeprom.servo_multipos_opcode>>4)%8));
+				ln_gpio_status_flag[(eeprom.servo_multipos_opcode>>4)/8] &= ~(1<<((eeprom.servo_multipos_opcode>>4)%8));
 			}
 			
 		}

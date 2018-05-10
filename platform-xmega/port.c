@@ -342,20 +342,14 @@ void relay_process(void)
 		relay_cmd -= 0x10;
 }
 
-void servo_power_enable(void)
+inline void servo_power_enable(void)
 {
-	if (!(eeprom.port_config&(1<<PORT_MODE_PWM_CH7_ENABLE)))
-	{
-		PORTA.OUTCLR = (1<<5);
-	}
+	PORTA.OUTCLR = (1<<5);
 }
 
-void servo_power_disable(void)
+inline void servo_power_disable(void)
 {
-	if (!(eeprom.port_config&(1<<PORT_MODE_PWM_CH7_ENABLE)))
-	{
-		PORTA.OUTSET = (1<<5);
-	}
+	PORTA.OUTSET = (1<<5);
 }
 
 //==============================================================================
@@ -460,7 +454,7 @@ void pwm_tick(void)
 		PORTA.OUTSET = temp&((1<<6)|(1<<7));
 		PORTA.OUTCLR = ~temp&((1<<6)|(1<<7));
 		
-		temp = TCC2.CTRLC>>3;
+		temp = TCC2.CTRLC>>4;
 		PORTB.OUTSET = temp&((1<<0)|(1<<1));
 		PORTB.OUTCLR = ~temp&((1<<0)|(1<<1));
 	}
@@ -606,24 +600,24 @@ ISR(TCD2_HUNF_vect)
 	// Do housekeeping
 	if (TCC2.CTRLE==TC2_BYTEM_SPLITMODE_gc)
 	{
-		TCC2.LCMPA = pwm_port[4].dimm_current>DIMM_RANGE_MIN ? pwm_port[4].dimm_current>DIMM_RANGE_MAX ? PWM_STEPS+1 : pwm_port[4].dimm_current : 0;
-		TCC2.LCMPB = pwm_port[6].dimm_current>DIMM_RANGE_MIN ? pwm_port[6].dimm_current - DIMM_RANGE_MIN : 0;
-		TCC2.LCMPC = pwm_port[1].dimm_current>DIMM_RANGE_MIN ? pwm_port[1].dimm_current - DIMM_RANGE_MIN : 0;
-		TCC2.LCMPD = pwm_port[3].dimm_current>DIMM_RANGE_MIN ? pwm_port[3].dimm_current>DIMM_RANGE_MAX ? PWM_STEPS+1 : pwm_port[3].dimm_current - DIMM_RANGE_MIN : 0;
-		TCC2.HCMPA = pwm_port[5].dimm_current>DIMM_RANGE_MIN ? pwm_port[5].dimm_current - DIMM_RANGE_MIN : 0;
-		TCC2.HCMPB = pwm_port[7].dimm_current>DIMM_RANGE_MIN ? pwm_port[7].dimm_current - DIMM_RANGE_MIN : 0;
-		TCC2.HCMPC = pwm_port[8].dimm_current>DIMM_RANGE_MIN ? pwm_port[8].dimm_current - DIMM_RANGE_MIN : 0;
-		TCC2.HCMPD = pwm_port[10].dimm_current>DIMM_RANGE_MIN ? pwm_port[10].dimm_current - DIMM_RANGE_MIN : 0;
+		TCC2.LCMPA = pwm_port[12].dimm_current>DIMM_RANGE_MAX ? DIMM_RANGE_MAX : pwm_port[12].dimm_current;
+		TCC2.LCMPB = pwm_port[0].dimm_current>DIMM_RANGE_MAX ? DIMM_RANGE_MAX : pwm_port[0].dimm_current;
+		TCC2.LCMPC = pwm_port[10].dimm_current>DIMM_RANGE_MAX ? DIMM_RANGE_MAX : pwm_port[10].dimm_current;
+		TCC2.LCMPD = pwm_port[14].dimm_current>DIMM_RANGE_MAX ? DIMM_RANGE_MAX : pwm_port[14].dimm_current;
+		TCC2.HCMPA = pwm_port[13].dimm_current>DIMM_RANGE_MAX ? DIMM_RANGE_MAX : pwm_port[13].dimm_current;
+		TCC2.HCMPB = pwm_port[1].dimm_current>DIMM_RANGE_MAX ? DIMM_RANGE_MAX : pwm_port[1].dimm_current;
+		TCC2.HCMPC = pwm_port[11].dimm_current>DIMM_RANGE_MAX ? DIMM_RANGE_MAX : pwm_port[11].dimm_current;
+		TCC2.HCMPD = pwm_port[15].dimm_current>DIMM_RANGE_MAX ? DIMM_RANGE_MAX : pwm_port[15].dimm_current;
 	}
 	
-	TCD2.LCMPA = pwm_port[7].dimm_current>DIMM_RANGE_MIN ? pwm_port[7].dimm_current - DIMM_RANGE_MIN : 0;
-	TCD2.LCMPB = pwm_port[6].dimm_current>DIMM_RANGE_MIN ? pwm_port[6].dimm_current - DIMM_RANGE_MIN : 0;
-	TCD2.LCMPC = pwm_port[5].dimm_current>DIMM_RANGE_MIN ? pwm_port[5].dimm_current - DIMM_RANGE_MIN : 0;
-	TCD2.LCMPD = pwm_port[3].dimm_current>DIMM_RANGE_MIN ? pwm_port[3].dimm_current - DIMM_RANGE_MIN : 0;
-	TCD2.HCMPA = pwm_port[2].dimm_current>DIMM_RANGE_MIN ? pwm_port[2].dimm_current - DIMM_RANGE_MIN : 0;
-	TCD2.HCMPB = pwm_port[4].dimm_current>DIMM_RANGE_MIN ? pwm_port[4].dimm_current - DIMM_RANGE_MIN : 0;
-	TCD2.HCMPC = pwm_port[8].dimm_current>DIMM_RANGE_MIN ? pwm_port[8].dimm_current - DIMM_RANGE_MIN : 0;
-	TCD2.HCMPD = pwm_port[9].dimm_current>DIMM_RANGE_MIN ? pwm_port[9].dimm_current - DIMM_RANGE_MIN : 0;
+	TCD2.LCMPA = pwm_port[7].dimm_current>DIMM_RANGE_MAX ? DIMM_RANGE_MAX : pwm_port[7].dimm_current;
+	TCD2.LCMPB = pwm_port[6].dimm_current>DIMM_RANGE_MAX ? DIMM_RANGE_MAX : pwm_port[6].dimm_current;
+	TCD2.LCMPC = pwm_port[5].dimm_current>DIMM_RANGE_MAX ? DIMM_RANGE_MAX : pwm_port[5].dimm_current;
+	TCD2.LCMPD = pwm_port[3].dimm_current>DIMM_RANGE_MAX ? DIMM_RANGE_MAX : pwm_port[3].dimm_current;
+	TCD2.HCMPA = pwm_port[2].dimm_current>DIMM_RANGE_MAX ? DIMM_RANGE_MAX : pwm_port[2].dimm_current;
+	TCD2.HCMPB = pwm_port[4].dimm_current>DIMM_RANGE_MAX ? DIMM_RANGE_MAX : pwm_port[4].dimm_current;
+	TCD2.HCMPC = pwm_port[8].dimm_current>DIMM_RANGE_MAX ? DIMM_RANGE_MAX : pwm_port[8].dimm_current;
+	TCD2.HCMPD = pwm_port[9].dimm_current>DIMM_RANGE_MAX ? DIMM_RANGE_MAX : pwm_port[9].dimm_current;
 	
 	// Disable interrupt
 	TCD2.INTCTRLA = 0;
@@ -716,30 +710,23 @@ void port_do_mapping(void)
 			if ((status_mapped&(1<<index))==0)
 			{
 				port_do_mapped |= (1<<index);
-				if (index<PWM_PORT_COUNT)
+				if (eeprom.port_pwm_enable&(1<<index))
 				{
-					pwm_port[index].dimm_target = 0;
+					pwm_port[index].dimm_target = eeprom.port_brightness_off[index];
 				}
 			}
 			else
 			{
 				port_do_mapped &= ~(1<<index);
 			
-				if (index<PWM_PORT_COUNT)
+				if (eeprom.port_pwm_enable&(1<<index))
 				{
-			
-					uint8_t idx_reg = 0;
-		
-					for (uint8_t idx=0;idx<sizeof(eeprom.port_brightness_select)/sizeof(eeprom.port_brightness_select[0]);idx++)
-					{
-						idx_reg |= (eeprom.port_brightness_select[idx]&(1<<index)) ? (1<<idx) : 0;
-					}
-		
-					pwm_port[index].dimm_target = eeprom.port_brightness[idx_reg];
+					pwm_port[index].dimm_target = eeprom.port_brightness_on[index];
 				}
 			}
 		}
 	}
+	
 	
 	if (!(eeprom.port_config&(1<<PORT_MODE_PWM1_ENABLE)))
 	{
