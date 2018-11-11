@@ -137,6 +137,7 @@ volatile byte				lnTxIndex ;
 volatile byte				lnTxLength ;
 volatile byte       lnTxSuccess ;   // this boolean flag as a message from timer interrupt to send function
 uint8_t ln_ac_buf[2];
+volatile uint8_t lnTxEcho;
 
 /**************************************************************************
 *
@@ -305,7 +306,8 @@ ISR(LN_TMR_SIGNAL)     /* signal handler for timer0 overflow */
 			lnTxSuccess = 1 ;
 
 			// Now copy the TX Packet into the RX Buffer
-			addMsgLnBuf( lnRxBuffer, lnTxData );
+			if (lnTxEcho)
+				addMsgLnBuf( lnRxBuffer, lnTxData );
 
 			// Begin CD Backoff state
 			lnBitCount = 0 ;
@@ -397,6 +399,7 @@ void initLocoNetHardware( LnBuf *RxBuffer )
 	ACA.AC0CTRL |= AC_INTLVL_HI_gc;
 
 	lnState = LN_ST_IDLE ;
+	lnTxEcho = 1;
 	
 	DMA.CTRL = 0;
 	DMA.CTRL = DMA_RESET_bm;

@@ -49,10 +49,12 @@ PROCESS(ln_wdt_process, "Loconet Watchdog Handler");
 
 static struct etimer ln_ack_timer;
 static struct etimer ln_wdt_timer;
+static struct etimer ln_lookup_timer;
 
 static process_event_t ln_ack_event;
 
 LnBuf LnBuffer;
+LnBuf LnTxBuffer;
 
 uint8_t ln_gpio_tx[LN_GPIO_BW];
 uint8_t ln_gpio_tx_ack[LN_GPIO_BW];
@@ -63,19 +65,27 @@ uint8_t ln_gpio_status_flag[LN_GPIO_BW];
 uint8_t ln_gpio_ack_counter[LN_GPIO_CH_COUNT];
 uint8_t ln_wdt_flag;
 uint8_t ln_wdt_counter __attribute__ ((section (".noinit")));
+uint8_t ln_gpio_lookup[LN_LOOKUP_ENTRIES];
+uint8_t ln_gpio_lookup_list[2*LN_GPIO_CH_COUNT];
 
 extern uint16_t deviceID;
 
 void loconet_init(void)
 {
+	ln_update_lookup();
+	
 	initLnBuf(&LnBuffer);
+	initLnBuf(&LnTxBuffer);
+	
 	initLocoNet(&LnBuffer);
+	lnTxEcho = 0;
 	ACA.CTRLB = ((eeprom.ln_threshold/4)-1)&0x3F;
 	
 	if (eeprom.sv_serial_number==0xFFFF)
 	{
 		eeprom.sv_serial_number = deviceID;
 		ln_load_board_config();
+		ln_update_lookup();
 		eeprom_sync_storage();
 		
 		// Issue a software reset
@@ -147,7 +157,10 @@ PROCESS_THREAD(ln_wdt_process, ev, data)
 
 		if (!ln_wdt_flag)
 		{
+			uint8_t tmp = lnTxEcho;
+			lnTxEcho = 1;
 			sendLocoNetPacket(&wdt_msg);
+			lnTxEcho = tmp;
 		}
 		
 		ln_wdt_flag = 0;
@@ -202,6 +215,13 @@ PROCESS_THREAD(ln_process, ev, data)
 {
 	lnMsg *LnPacket;
 	uint8_t index;
+	uint8_t source;
+	
+	// Mimic missing PROCESS_TIMERHANDLER(handler)
+	if ((ev==PROCESS_EVENT_TIMER) /*&& (data==&ln_lookup_timer)*/)
+	{
+		ln_update_lookup();
+	}
 	
 	PROCESS_BEGIN();
 	
@@ -224,7 +244,14 @@ PROCESS_THREAD(ln_process, ev, data)
 		
 		doSVDeferredProcessing();
 		
+		source = 0;
 		LnPacket = recvLocoNetPacket();
+		
+		if (!LnPacket)
+		{
+			LnPacket = recvLnMsg(&LnTxBuffer);
+			source = 1;
+		}
 	
 		if (LnPacket)
 		{   
@@ -233,7 +260,7 @@ PROCESS_THREAD(ln_process, ev, data)
 			
 			sendLocoNetPacketUSB(LnPacket);
 			
-			ln_gpio_process_rx(LnPacket);
+			ln_gpio_process_rx(LnPacket, source);
 			
 			//ln_throttle_process(LnPacket);
 			
@@ -261,7 +288,6 @@ PROCESS_THREAD(ln_process, ev, data)
 		{
 			ln_gpio_process_tx();
 		}
-		
 	}
 	
 	PROCESS_END();
@@ -289,6 +315,10 @@ void ln_gpio_process_tx(void)
 				{
 					if (sendLocoNet4BytePacket(msg[0]|(1<<7), msg[1], msg[2])==LN_DONE)
 					{
+						addByteLnBuf(&LnTxBuffer, msg[0]);
+						addByteLnBuf(&LnTxBuffer, msg[1]);
+						addByteLnBuf(&LnTxBuffer, msg[2]);
+						addByteLnBuf(&LnTxBuffer, 0xFF ^ msg[0] ^ msg[1] ^ msg[2]);
 						ln_gpio_status_pre[current_channel/8] |= (1<<(current_channel%8));
 						ln_gpio_tx[current_channel/8] &= ~(1<<(current_channel%8));
 						if ((ln_gpio_status_ack[current_channel/8]&(1<<(current_channel%8)))==0)
@@ -307,6 +337,10 @@ void ln_gpio_process_tx(void)
 				{
 					if (sendLocoNet4BytePacket(msg[0]|(1<<7), msg[1], msg[2])==LN_DONE)
 					{
+						addByteLnBuf(&LnTxBuffer, msg[0]);
+						addByteLnBuf(&LnTxBuffer, msg[1]);
+						addByteLnBuf(&LnTxBuffer, msg[2]);
+						addByteLnBuf(&LnTxBuffer, 0xFF ^ msg[0] ^ msg[1] ^ msg[2]);
 						ln_gpio_status_pre[current_channel/8] &= ~(1<<(current_channel%8));
 						ln_gpio_tx[current_channel/8] &= ~(1<<(current_channel%8));
 						if ((ln_gpio_status_ack[current_channel/8]&(1<<(current_channel%8)))==0)
@@ -372,6 +406,9 @@ void ln_gpio_process_tx(void)
 
 uint8_t ln_create_message(uint8_t *msg)
 {
+	LN_STATUS status = LN_UNKNOWN_ERROR;
+	uint8_t msg_tx[4];
+	
 	if (msg[0]==0)
 		return 1;
 		
@@ -381,14 +418,36 @@ uint8_t ln_create_message(uint8_t *msg)
 		case OPC_SW_REQ:
 			//msg0 = OPC_SW_REP;
 			//msg2 = (msg[2]&0xF)|OPC_SW_REP_SW|OPC_SW_REP_INPUTS|((msg[2]&OPC_SW_REQ_DIR)?OPC_SW_REP_HI:0);
-			return (sendLocoNet4BytePacket(OPC_SW_REP, msg[1], (msg[2]&0xF)|OPC_SW_REP_SW|OPC_SW_REP_INPUTS|((msg[2]&OPC_SW_REQ_DIR)?OPC_SW_REP_HI:0))==LN_DONE)?1:0;
+			msg_tx[0] = OPC_SW_REP;
+			msg_tx[1] = msg[1];
+			msg_tx[2] = (msg[2]&0xF)|OPC_SW_REP_SW|OPC_SW_REP_INPUTS|((msg[2]&OPC_SW_REQ_DIR)?OPC_SW_REP_HI:0);
+			status = sendLocoNet4BytePacket(msg_tx[0], msg_tx[1], msg_tx[2]);
+			if (status==LN_DONE)
+			{
+				msg_tx[3] = 0xFF ^ msg_tx[0] ^ msg_tx[1] ^ msg_tx[2];
+				addMsgLnBuf(&LnTxBuffer, (lnMsg *)msg_tx);
+			}
+			break;
+		default:
+			status = sendLocoNet4BytePacket(msg[0], msg[1], msg[2]);
+			if (status==LN_DONE)
+			{
+				msg_tx[0] = msg[0];
+				msg_tx[1] = msg[1];
+				msg_tx[2] = msg[2];
+				msg_tx[3] = 0xFF ^ msg_tx[0] ^ msg_tx[1] ^ msg_tx[2];
+				addMsgLnBuf(&LnTxBuffer, (lnMsg *)msg);
+			}
 	}
 	
-	return (sendLocoNet4BytePacket(msg[0]|(1<<7), msg[1], msg[2])==LN_DONE)?1:0;
+	return (status==LN_DONE)?1:0;
 }
 
 uint8_t ln_create_message_ack(uint8_t *msg)
 {
+	LN_STATUS status = LN_UNKNOWN_ERROR;
+	uint8_t msg_tx[4];
+	
 	if (msg[0]==0)
 	{
 		return 1;
@@ -396,12 +455,34 @@ uint8_t ln_create_message_ack(uint8_t *msg)
 	
 	if (msg[0]==OPC_SW_ACK)
 	{
-		return (sendLocoNet4BytePacket(OPC_LONG_ACK, msg[0]&0x7F, 0x7F)==LN_DONE)?1:0;
+		msg_tx[0] = OPC_LONG_ACK;
+		msg_tx[1] = msg[0]&0x7F;
+		msg_tx[2] = 0x7F;
+		
+		status = sendLocoNet4BytePacket(msg_tx[0], msg_tx[1], msg_tx[2]);
+		if (status==LN_DONE)
+		{
+			msg_tx[3] = 0xFF ^ msg_tx[0] ^ msg_tx[1] ^ msg_tx[2];
+			addMsgLnBuf(&LnTxBuffer, (lnMsg *)msg_tx);
+		}
+		
+		return (status==LN_DONE)?1:0;
 	}
 	
 	if (eeprom.ln_gpio_ack_count>0)
 	{
-		return (sendLocoNet4BytePacket(msg[0]|(1<<7), msg[1], msg[2]^(1<<6))==LN_DONE)?1:0;
+		msg_tx[0] = msg[0];
+		msg_tx[1] = msg[1];
+		msg_tx[2] = msg[2]^(1<<6);
+		
+		status = sendLocoNet4BytePacket(msg_tx[0], msg_tx[1], msg_tx[2]);
+		if (status==LN_DONE)
+		{
+			msg_tx[3] = 0xFF ^ msg_tx[0] ^ msg_tx[1] ^ msg_tx[2];
+			addMsgLnBuf(&LnTxBuffer, (lnMsg *)msg_tx);
+		}
+		
+		return (status==LN_DONE)?1:0;
 	}
 	else
 	{
@@ -423,7 +504,7 @@ uint8_t ln_is_ack_message(uint8_t *msg)
 	}
 }
 
-void ln_gpio_process_rx(lnMsg *LnPacket)
+void ln_gpio_process_rx(lnMsg *LnPacket, uint8_t source)
 {
 	uint8_t index;
 	uint8_t ack, cmd;
@@ -434,8 +515,10 @@ void ln_gpio_process_rx(lnMsg *LnPacket)
 	if (getLnMsgSize(LnPacket)>4)
 		return;
 	
+	uint8_t checksum = getLnMsgChecksum(LnPacket) & LN_LOOKUP_MASK;
 	
-	for (index=0;index<(2*LN_GPIO_CH_COUNT);index++)
+	// Loop over all valid entries
+	for (index = ln_gpio_lookup[checksum];index!=0xFF;index = ln_gpio_lookup_list[index])
 	{
 		// 1. Find a matching opcode
 		// - either a direct match, or
@@ -464,25 +547,14 @@ void ln_gpio_process_rx(lnMsg *LnPacket)
 				
 				if ((LnPacket->srq.sw2&(1<<6))==0)
 				{
-					// Ack Command if direction input (==0)
-					if ((eeprom.ln_gpio_dir[index/16]&(1<<((index/2)%8)))==0)
-					{
-						cmd = 1;
-						ack = 1;
-					}
-					else
-					{
-						cmd = 1;
-					}
+					// Command received, send ack
+					cmd = 1;
+					ack = 1;
 				}
 				else
 				{
 					// Ack received and direction output (==1)
-					if ((eeprom.ln_gpio_dir[index/16]&(1<<((index/2)%8)))!=0)
-					{
-						// Ack
-						ack = 1;
-					}
+					ack = 1;
 				}
 				break;
 			case OPC_SW_REP:
@@ -506,25 +578,13 @@ void ln_gpio_process_rx(lnMsg *LnPacket)
 					
 					if ((LnPacket->srq.sw2&(1<<6))!=0)
 					{
-						// Ack Command if direction input (==0)
-						if ((eeprom.ln_gpio_dir[index/16]&(1<<((index/2)%8)))==0)
-						{
-							cmd = 1;
-							ack = 1;
-						}
-						else
-						{
-							cmd = 1;
-						}
+						cmd = 1;
+						ack = 1;
 					}
 					else
 					{
-						// Ack received and direction output (==1)
-						if ((eeprom.ln_gpio_dir[index/16]&(1<<((index/2)%8)))!=0)
-						{
-							// Ack
-							ack = 1;
-						}
+						// Ack
+						ack = 1;
 					}
 				}	
 				break;
@@ -534,32 +594,26 @@ void ln_gpio_process_rx(lnMsg *LnPacket)
 					
 				if ((LnPacket->srq.sw2&(1<<6))!=0)
 				{
-					// Ack Command if direction input (==0)
-					if ((eeprom.ln_gpio_dir[index/16]&(1<<((index/2)%8)))==0)
-					{
-						cmd = 1;
-						ack = 1;
-					}
-					else
-					{
-						cmd = 1;
-					}
-					
+					cmd = 1;
+					ack = 1;
 				}
 				else
 				{
 					// Ack received and direction output (==1)
-					if ((eeprom.ln_gpio_dir[index/16]&(1<<((index/2)%8)))!=0)
-					{
-						// Ack
-						ack = 1;
-					}
+					// Ack
+					ack = 1;
 				}
 				break;
 			default:
 				if (LnPacket->srq.sw2!=eeprom.ln_gpio_opcode[index][2])
 					continue;
+				cmd = 1;
+				break;
 		}
+		
+		// No ACK handling if source is internal
+		if (source==1)
+			ack = 0;
 		
 		// We have a match, now set or clear the status
 		if (cmd)
@@ -590,7 +644,6 @@ void ln_gpio_process_rx(lnMsg *LnPacket)
 				ln_gpio_status_ack[index/16] &= ~(1<<((index/2)%8));
 			}
 		}
-
 	}
 }
 
@@ -624,6 +677,68 @@ void ln_create_opcode(uint8_t *buf, uint8_t opc, uint16_t addr)
 			buf[2] = ((addr>>8)&0x7F)|OPC_INPUT_REP_CB|((addr&1)?0x20:0);
 			buf[5] = buf[2]|OPC_INPUT_REP_HI;
 			break;
+	}
+}
+uint8_t getLnMsgChecksum(lnMsg *msg)
+{
+	uint8_t index;
+	
+	uint8_t chk = 0xFF;
+	uint8_t len = getLnMsgSize(msg) - 1;
+	
+	for (index=0;index<len;index++)
+	{
+		chk ^= msg->data[index];
+	}
+	
+	return chk;
+}
+
+void ln_trigger_lookup_update(void)
+{
+	etimer_set(&ln_lookup_timer, 2*CLOCK_SECOND);
+}
+
+void ln_update_lookup(void)
+{
+	uint8_t index, checksum;
+	for (index=0;index<sizeof(ln_gpio_lookup);index++)
+	{
+		ln_gpio_lookup[index] = 0xFF;
+	}
+	
+	for (index=0;index<(2*LN_GPIO_CH_COUNT);index++)
+	{
+		lnMsg * msg = (lnMsg *)eeprom.ln_gpio_opcode[index];
+		
+		if (msg->data[0]<128)
+			continue;
+
+		checksum = getLnMsgChecksum(msg) & LN_LOOKUP_MASK;
+				
+		if (ln_gpio_lookup[checksum]==0xFF)
+		{
+			ln_gpio_lookup[checksum] = index;
+			ln_gpio_lookup_list[index] = 0xFF;
+		}
+		else
+		{
+			uint8_t idx = ln_gpio_lookup[checksum];
+			
+			lookup_loop:
+			
+			if (ln_gpio_lookup_list[idx]==0xFF)
+			{
+				ln_gpio_lookup_list[idx] = index;
+			}
+			else
+			{
+				idx = ln_gpio_lookup_list[idx];
+				goto lookup_loop;
+			}
+			
+			ln_gpio_lookup_list[index] = 0xFF;
+		}
 	}
 }
 
@@ -968,6 +1083,46 @@ void ln_load_board_config(void)
 				eeprom.ln_gpio_opcode[index][0] = 0;
 			}
 			return;
+			break;
+		case 0xA206:
+			eeprom.sv_destination_id = 951;
+			eeprom.sv_serial_number = 951;
+			eeprom.servo_startup_delay = 25;
+			eeprom.servo_timeout = 256;
+			ln_create_opcode(eeprom.ln_gpio_opcode[0], OPC_SW_REQ, 2*951);
+			ln_create_opcode(eeprom.ln_gpio_opcode[2], OPC_SW_REQ, 2*951+1);
+			break;
+		case 0x8031:
+			eeprom.sv_destination_id = 952;
+			eeprom.sv_serial_number = 952;
+			eeprom.servo_startup_delay = 50;
+			eeprom.servo_timeout = 256;
+			ln_create_opcode(eeprom.ln_gpio_opcode[0], OPC_SW_REQ, 2*952);
+			ln_create_opcode(eeprom.ln_gpio_opcode[2], OPC_SW_REQ, 2*952+1);
+			break;
+		case 0xE2FE:
+			eeprom.sv_destination_id = 953;
+			eeprom.sv_serial_number = 953;
+			eeprom.servo_startup_delay = 75;
+			eeprom.servo_timeout = 256;
+			ln_create_opcode(eeprom.ln_gpio_opcode[0], OPC_SW_REQ, 2*953);
+			ln_create_opcode(eeprom.ln_gpio_opcode[2], OPC_SW_REQ, 2*953+1);
+			break;
+		case 0x6EC2:
+			eeprom.sv_destination_id = 954;
+			eeprom.sv_serial_number = 954;
+			eeprom.servo_startup_delay = 100;
+			eeprom.servo_timeout = 256;
+			ln_create_opcode(eeprom.ln_gpio_opcode[0], OPC_SW_REQ, 2*954);
+			ln_create_opcode(eeprom.ln_gpio_opcode[2], OPC_SW_REQ, 2*954+1);
+			break;
+		case 0xB300:
+			eeprom.sv_destination_id = 955;
+			eeprom.sv_serial_number = 955;
+			eeprom.servo_startup_delay = 125;
+			eeprom.servo_timeout = 256;
+			ln_create_opcode(eeprom.ln_gpio_opcode[0], OPC_SW_REQ, 2*955);
+			ln_create_opcode(eeprom.ln_gpio_opcode[2], OPC_SW_REQ, 2*955+1);
 			break;
 		default:
 			return;

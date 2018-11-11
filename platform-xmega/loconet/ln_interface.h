@@ -41,6 +41,9 @@ extern uint8_t LN_BACKOFF_INITIAL;
 extern uint8_t LN_BACKOFF_MAX;
 void enableLocoNetMaster(bool enable);
 
+// Handling of message after transmission (1: copy message to receive buffer, 0: discard message)
+extern volatile uint8_t lnTxEcho;
+
 // Interface to lower layer
 // Must be implemented by hardware level module, ln_sw_uart.c or ln_hw_uart.c or...
 void initLocoNetHardware( LnBuf *RxBuffer );
