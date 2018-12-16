@@ -90,11 +90,11 @@ void cmd_exec(void)
 		case 4:
 			USB_enter_bootloader();
 			break;
-		case 5:
-			rSlot.slot = 0;
-			servo_status |= (1<<SERVO_STATUS_PWR_ALWAYS_ON);
-			break;
 	}
+	
+	#define SV_CMD_CALLBACK(fun) fun(cmd_register);
+	#include "config.h"
+	#undef SV_CMD_CALLBACK
 	
 	cmd_register = 0;
 }

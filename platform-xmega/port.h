@@ -165,12 +165,14 @@ SV(116, "PWM Delta 14", eeprom.pwm_delta[13], 0)
 SV(117, "Port User Command", port_user, 0)
 SV_LSB(118, "Port Input Status L", port_di, 0)
 SV_MSB(119, "Port Input Status H", port_di, 0)
-SV_LSB(120, "PWM Update Trigger L", pwm_update_trig, 0)
-SV_MSB(121, "PWM Update Trigger H", pwm_update_trig, 0)
-SV_LSB(122, "PWM Port Select", pwm_parameter_select, 0)
-SV_MSB(123, "PWM Port Select", pwm_parameter_select, 0)
-SV(124, "PWM Port Target", pwm_target_temp, pwm_target_parameter_update)
-SV(125, "PWM Port Delta", pwm_delta_temp, pwm_delta_parameter_update)
+SV_LSB(120, "Port Output Status L", port_do_mapped, 0)
+SV_MSB(121, "Port Output Status H", port_do_mapped, 0)
+SV_LSB(122, "PWM Update Trigger L", pwm_update_trig, 0)
+SV_MSB(123, "PWM Update Trigger H", pwm_update_trig, 0)
+SV_LSB(124, "PWM Port Select", pwm_parameter_select, 0)
+SV_MSB(125, "PWM Port Select", pwm_parameter_select, 0)
+SV(126, "PWM Port Target", pwm_target_temp, pwm_target_parameter_update)
+SV(127, "PWM Port Delta", pwm_delta_temp, pwm_delta_parameter_update)
 #endif
 
 /*
@@ -197,7 +199,7 @@ uint8_t relay_request;
 #endif
 
 /*
- *	EEPROM Confiuration Variable Default Configuration
+ *	EEPROM Configuration Variable Default Configuration
  */
 #ifdef EEPROM_DEFAULT
 .port_config = (1<<PORT_MODE_PULLUP_ENABLE)|(1<<PORT_MODE_RELAY)|(1<<PORT_MODE_PWM_ENABLE)|(1<<PORT_MODE_PWM1_ENABLE),
@@ -319,6 +321,8 @@ void pwm_delta_parameter_update(void);
 
 extern uint16_t port_do;
 extern uint16_t port_di;
+extern uint16_t port_di_mapped;
+extern uint16_t port_do_mapped;
 extern uint8_t port_user;
 
 extern uint8_t port_mode;

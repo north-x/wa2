@@ -104,7 +104,7 @@ void loconet_init(void)
 	process_start(&ln_ack_process, NULL);
 	
 	// Start Watchdog process if requested
-	if (eeprom.ln_wdt_enable)
+	if (eeprom.ln_gpio_config&(1<<LN_GPIO_CONFIG_WATCHDOG))
 	{
 		// Enable watchdog if the fuses are not configured
 		if (!(WDT.CTRL&WDT_ENABLE_bm))
@@ -233,6 +233,15 @@ PROCESS_THREAD(ln_process, ev, data)
 		ln_gpio_status_pre[index] = eeprom_status.ln_gpio_status[index];
 	}
 	
+	if (eeprom.ln_gpio_config&(1<<LN_GPIO_CONFIG_STARTUP))
+	{
+		// Force transmission of current state
+		for (index=0;index<LN_GPIO_BW;index++)
+		{
+			ln_gpio_tx[index] = 0xFF;
+		}
+	}
+	
 	while (1)
 	{
 		PROCESS_PAUSE();
@@ -268,7 +277,7 @@ PROCESS_THREAD(ln_process, ev, data)
 			#include "config.h"
 			#undef LN_RX_CALLBACK
 			
-			if ((LnPacket->sz.command == OPC_GPON))
+			if ((LnPacket->sz.command == OPC_GPON) && (eeprom.ln_gpio_config&(1<<LN_GPIO_CONFIG_GPON)))
 			{
 				// Force transmission of current state
 				for (index=0;index<LN_GPIO_BW;index++)

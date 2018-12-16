@@ -463,3 +463,98 @@ void ln_throttle_process(lnMsg *LnPacket)
 			break;
 	}
 }
+
+void ln_sv_cmd_callback(uint8_t cmd)
+{
+	static uint16_t * servo_act[] = {&servo[0].min, &servo[1].min};
+	if (cmd==5)
+	{
+		rSlot.slot = 0;
+		servo_status ^= (1<<SERVO_STATUS_PWR_ALWAYS_ON);
+	}
+	else if ((cmd>=10) && (cmd<30))
+	{
+		uint8_t idx_servo;
+		uint8_t update_pos = 0;
+		int32_t temp32;
+		
+		if (cmd<20)
+		{
+			cmd -= 10;
+			idx_servo = 0;
+		}
+		else
+		{
+			cmd -= 20;
+			idx_servo = 1;
+		}
+		
+		switch (cmd)
+		{
+			// "Page up": big increment
+			case 9:
+				temp32 = (int32_t) *servo_act[idx_servo] + 1024;
+				update_pos = 1;
+				break;
+			// "Page down": big decrement
+			case 3:
+				temp32 = (int32_t) *servo_act[idx_servo] - 1024;
+				update_pos = 1;
+				break;
+			// "Up": medium increment
+			case 8:
+				temp32 = (int32_t) *servo_act[idx_servo] + 256;
+				update_pos = 1;
+				break;
+			// "Down": medium decrement
+			case 2:
+				temp32 = (int32_t) *servo_act[idx_servo] - 256;
+				update_pos = 1;
+				break;
+			// Small increment
+			case 7:
+				temp32 = (int32_t) *servo_act[idx_servo] + 32;
+				update_pos = 1;
+				break;
+			// Small decrement
+			case 1:
+				temp32 = (int32_t) *servo_act[idx_servo] - 32;
+				update_pos = 1;
+				break;
+			// "Left": position left
+			case 4:
+				ln_gpio_status[0] &= ~(1<<idx_servo);
+				ln_gpio_status_pre[0] &= ~(1<<idx_servo);
+				ln_gpio_status_flag[0] |= (1<<idx_servo);
+				servo_act[idx_servo] = &servo[idx_servo].min;
+				break;
+			// "Right": position right
+			case 6:
+				ln_gpio_status[0] |= (1<<idx_servo);
+				ln_gpio_status_pre[0] |= (1<<idx_servo);
+				ln_gpio_status_flag[0] |= (1<<idx_servo);
+				servo_act[idx_servo] = &servo[idx_servo].max;
+				break;
+			// Save settings
+			case 0:
+				eeprom.servo_min[idx_servo] = servo[idx_servo].min;
+				eeprom.servo_max[idx_servo] = servo[idx_servo].max;
+				eeprom_sync_storage();
+				break;
+			// Center servo in current position (left or right)
+			case 5:
+				*servo_act[idx_servo] = 32767;
+				break;
+		}
+		
+		if (update_pos==0)
+			return;
+		
+		if (temp32<0)
+			*servo_act[idx_servo] = 0;
+		else if (temp32>65535)
+			*servo_act[idx_servo] = 65535;
+		else
+			*servo_act[idx_servo] = temp32;
+	}
+}

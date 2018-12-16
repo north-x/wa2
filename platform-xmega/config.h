@@ -29,7 +29,7 @@
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  */ 
 
-#if defined(LN_RX_CALLBACK) || defined(SV_CFG) || defined(EEPROM_CFG) || defined(EEPROM_STATUS_CFG) || defined(EEPROM_DEFAULT) || defined(EEPROM_STATUS_DEFAULT) || defined(AUTOSTART_CFG)
+#if defined(SV_CMD_CALLBACK) || defined(LN_RX_CALLBACK) || defined(SV_CFG) || defined(EEPROM_CFG) || defined(EEPROM_STATUS_CFG) || defined(EEPROM_DEFAULT) || defined(EEPROM_STATUS_DEFAULT) || defined(AUTOSTART_CFG)
 	#define CONFIGURATION
 #else
 	#include "sys/process.h"

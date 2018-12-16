@@ -51,9 +51,6 @@
  *
  */
 #ifdef SV_CFG
-//SV(22, "SV No22", sv_no_22, 0)
-//SV_LSB(23, "LSB of sv16bit", eeprom.test_config16, update_function)
-//SV_MSB(24, "MSB of sv16bit", eeprom.test_config16, 0)
 SV(257, "Servo Multipos Opcode Select", eeprom.servo_multipos_opcode, 0)
 SV(258, "Servo 1 Multipos Off", eeprom.servo_multipos[0][0], 0)
 SV(259, "Servo 1 Multipos On", eeprom.servo_multipos[0][1], 0)
@@ -79,7 +76,7 @@ uint8_t servo_multipos[2][2];
 #endif
 
 /*
- *	EEPROM Confiuration Variable Default Configuration
+ *	EEPROM Configuration Variable Default Configuration
  */
 #ifdef EEPROM_DEFAULT
 .servo_multipos_opcode = 0,
@@ -104,6 +101,16 @@ uint8_t servo_multipos[2][2];
 LN_RX_CALLBACK(ln_throttle_process)
 #endif
 
+/*
+ * SV CMD Callback Definition
+ *
+ * Function to be called when SV#5 is written
+ */
+#ifdef SV_CMD_CALLBACK
+SV_CMD_CALLBACK(ln_sv_cmd_callback)
+#endif
+
+
 #else
 /************************************************************************/
 /* Module Header File                                                   */
@@ -114,6 +121,7 @@ LN_RX_CALLBACK(ln_throttle_process)
 
 PROCESS_NAME(wa2_process);
 void ln_throttle_process(lnMsg *LnPacket);
+void ln_sv_cmd_callback(uint8_t cmd);
 
 #endif /* wa2_H_ */
 #endif

@@ -51,22 +51,22 @@
  *
  */
 #ifdef SV_CFG
-SV_MSB(239, "Servo 1 Minimum H", eeprom.servo_min[0], servo_update_configuration)
-SV_MSB(240, "Servo 1 Maximum H", eeprom.servo_max[0], servo_update_configuration)
-SV(241, "Servo 1 Time", eeprom.servo_time_ratio[0], servo_update_configuration)
-SV_LSB(242, "Servo 1 Minimum L", eeprom.servo_min[0], servo_update_configuration)
-SV_LSB(243, "Servo 1 Maximum L", eeprom.servo_max[0], servo_update_configuration)
-SV_MSB(244, "Servo 2 Minimum H", eeprom.servo_min[1], servo_update_configuration)
-SV_MSB(245, "Servo 2 Maximum H", eeprom.servo_max[1], servo_update_configuration)
-SV(246, "Servo 2 Time", eeprom.servo_time_ratio[1], servo_update_configuration)
-SV_LSB(247, "Servo 2 Minimum L", eeprom.servo_min[1], servo_update_configuration)
-SV_LSB(248, "Servo 2 Maximum L", eeprom.servo_max[1], servo_update_configuration)
-SV_LSB(249, "Standby Delay L", eeprom.servo_timeout, 0)
-SV_MSB(250, "Standby Delay H", eeprom.servo_timeout, 0)
-SV_LSB(251, "Startup Delay L", eeprom.servo_startup_delay, 0)
-SV_MSB(252, "Startup Delay H", eeprom.servo_startup_delay, 0)
-SV(253, "Servo Start Method", eeprom.servo_start_method, servo_mode_update)
-SV(254, "Servo Configuration Register", eeprom.servo_config, servo_mode_update)
+SV_MSB(241, "Servo 1 Minimum H", eeprom.servo_min[0], servo_update_configuration)
+SV_MSB(242, "Servo 1 Maximum H", eeprom.servo_max[0], servo_update_configuration)
+SV(243, "Servo 1 Time", eeprom.servo_time_ratio[0], servo_update_configuration)
+SV_LSB(244, "Servo 1 Minimum L", eeprom.servo_min[0], servo_update_configuration)
+SV_LSB(245, "Servo 1 Maximum L", eeprom.servo_max[0], servo_update_configuration)
+SV_MSB(246, "Servo 2 Minimum H", eeprom.servo_min[1], servo_update_configuration)
+SV_MSB(247, "Servo 2 Maximum H", eeprom.servo_max[1], servo_update_configuration)
+SV(248, "Servo 2 Time", eeprom.servo_time_ratio[1], servo_update_configuration)
+SV_LSB(249, "Servo 2 Minimum L", eeprom.servo_min[1], servo_update_configuration)
+SV_LSB(250, "Servo 2 Maximum L", eeprom.servo_max[1], servo_update_configuration)
+SV_LSB(251, "Standby Delay L", eeprom.servo_timeout, 0)
+SV_MSB(252, "Standby Delay H", eeprom.servo_timeout, 0)
+SV_LSB(253, "Startup Delay L", eeprom.servo_startup_delay, 0)
+SV_MSB(254, "Startup Delay H", eeprom.servo_startup_delay, 0)
+SV(255, "Servo Start Method", eeprom.servo_start_method, servo_mode_update)
+SV(256, "Servo Configuration Register", eeprom.servo_config, servo_mode_update)
 #endif
 
 /*
@@ -90,7 +90,7 @@ uint8_t servo_position[2];
 #endif
 
 /*
- *	EEPROM Confiuration Variable Default Configuration
+ *	EEPROM Configuration Variable Default Configuration
  */
 #ifdef EEPROM_DEFAULT
 .servo_config = (1<<SERVO_STATUS_ENABLE_PWM_A),
