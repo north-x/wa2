@@ -41,6 +41,7 @@
  *
  */
 #ifdef AUTOSTART_CFG
+&relay_process,
 &wa2_process,
 #endif
 
@@ -51,11 +52,11 @@
  *
  */
 #ifdef SV_CFG
-SV(257, "Servo Multipos Opcode Select", eeprom.servo_multipos_opcode, 0)
-SV(258, "Servo 1 Multipos Off", eeprom.servo_multipos[0][0], 0)
-SV(259, "Servo 1 Multipos On", eeprom.servo_multipos[0][1], 0)
-SV(260, "Servo 2 Multipos Off", eeprom.servo_multipos[1][0], 0)
-SV(261, "Servo 2 Multipos On", eeprom.servo_multipos[1][1], 0)
+SV(282, "Servo Multipos Opcode Select", eeprom.servo_multipos_opcode, 0)
+SV(283, "Servo 1 Multipos Off", eeprom.servo_multipos[0][0], 0)
+SV(284, "Servo 1 Multipos On", eeprom.servo_multipos[0][1], 0)
+SV(285, "Servo 2 Multipos Off", eeprom.servo_multipos[1][0], 0)
+SV(286, "Servo 2 Multipos On", eeprom.servo_multipos[1][1], 0)
 #endif
 
 /*
@@ -72,7 +73,7 @@ uint8_t servo_multipos[2][2];
  *	EEPROM Status Variable Definition
  */
 #ifdef EEPROM_STATUS_CFG
-//uint8_t test_status;
+uint8_t relay_request;
 #endif
 
 /*
@@ -89,7 +90,7 @@ uint8_t servo_multipos[2][2];
  *	EEPROM Status Variable Default Configuration
  */
 #ifdef EEPROM_STATUS_DEFAULT
-//.test_status = 1,
+.relay_request = 0,
 #endif
 
 /*
@@ -120,8 +121,29 @@ SV_CMD_CALLBACK(ln_sv_cmd_callback)
 
 
 PROCESS_NAME(wa2_process);
+PROCESS_NAME(relay_process);
 void ln_throttle_process(lnMsg *LnPacket);
 void ln_sv_cmd_callback(uint8_t cmd);
+
+void relay_governor(void);
+
+void servo_power_enable(void);
+void servo_power_disable(void);
+
+#define PU_SERVO_POWER	0
+#define	PU_RELAY_1		1
+#define PU_RELAY_2		2
+#define PU_RELAY_RC1	3
+#define PU_RELAY_RC2	4
+#define PU_RELAY_RC3	5
+#define PU_RELAY_RC4	6
+
+#define RELAY_CMD_LEFT1		1
+#define RELAY_CMD_RIGHT1	2
+#define RELAY_CMD_LEFT2		4
+#define RELAY_CMD_RIGHT2	8
+#define RELAY_CMD_LEFT		1
+#define RELAY_CMD_RIGHT		2
 
 #endif /* wa2_H_ */
 #endif

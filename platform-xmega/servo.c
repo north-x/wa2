@@ -35,7 +35,6 @@
 #include "sys/process.h"
 #include "eeprom.h"
 #include "servo.h"
-#include "port.h"
 
 #if defined(__AVR__)
 #include <avr/io.h>
@@ -51,6 +50,8 @@
 PROCESS(servo_process,"Servo Process");
 
 unsigned int calc_servo_next_val(unsigned char nr);
+void servo_power_enable(void);
+void servo_power_disable(void);
 
 volatile uint8_t servo_status = 0;
 volatile uint16_t servo_timer = 0;

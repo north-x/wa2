@@ -36,8 +36,8 @@
 #endif
 	
 #include "ln_support.h"
-#include "servo.h"
 #include "port.h"
+#include "servo.h"
 #include "wa2.h"
 
 #undef CONFIGURATION

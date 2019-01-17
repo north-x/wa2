@@ -38,7 +38,14 @@
 #include "eeprom.h"
 
 PROCESS(wa2_process,"WA2 Application Process");
+PROCESS(relay_process,"Relay Control Process");
+
 rwSlotDataMsg rSlot;
+uint8_t relay_state;
+uint8_t relay_request;
+uint8_t relay_cmd;
+
+static struct etimer relay_timer;
 
 PROCESS_THREAD(wa2_process, ev, data)
 {
@@ -47,7 +54,6 @@ PROCESS_THREAD(wa2_process, ev, data)
 	
 	// Initialization
 	rSlot.slot = 0xFF;
-	port_user = (port_user&(~((1<<0)|(1<<1)))) | (eeprom_status.relay_request&((1<<0)|(1<<1)));
 	
 	while (1)
 	{
@@ -99,11 +105,11 @@ PROCESS_THREAD(wa2_process, ev, data)
 			// Turn on relay if position greater than 127
 			if (servo[0].position_actual>127)
 			{
-				port_user |= (1<<0);
+				relay_request |= (1<<0);
 			}
 			else
 			{
-				port_user &= ~(1<<0);
+				relay_request &= ~(1<<0);
 			}
 			
 			// If we reached the final position, transmit a switch report
@@ -132,11 +138,11 @@ PROCESS_THREAD(wa2_process, ev, data)
 			// Turn on relay if position greater than 127
 			if (servo[1].position_actual>127)
 			{
-				port_user |= (1<<1);
+				relay_request |= (1<<1);
 			}
 			else
 			{
-				port_user &= ~(1<<1);
+				relay_request &= ~(1<<1);
 			}
 			
 			// If we reached the final position, transmit the new status
@@ -557,4 +563,247 @@ void ln_sv_cmd_callback(uint8_t cmd)
 		else
 			*servo_act[idx_servo] = temp32;
 	}
+}
+
+void relay_governor(void)
+{
+	uint8_t relay_change;
+	
+	if (relay_cmd!=0)
+		return;
+	
+	relay_change = relay_request^relay_state;
+	if (relay_change)
+	{
+		if (relay_change&(1<<0))
+		{
+			if (relay_request&(1<<0))
+			{
+				relay_cmd |= RELAY_CMD_RIGHT1;
+			}
+			else
+			{
+				relay_cmd |= RELAY_CMD_LEFT1;
+			}
+		}
+		
+		if (relay_change&(1<<1))
+		{
+			if (relay_request&(1<<1))
+			{
+				relay_cmd |= RELAY_CMD_RIGHT2;
+			}
+			else
+			{
+				relay_cmd |= RELAY_CMD_LEFT2;
+			}
+		}
+		
+		relay_cmd |= 0xF0;
+		relay_state = relay_request;
+		eeprom_status.relay_request = relay_request;
+	}
+}
+
+#define RELAY_CHECK_DONE(RCMD)	\
+if ((relay_cmd&0xF0)==0)	\
+{ \
+	relay_cmd &= ~(RCMD); \
+	relay_cmd |= 0xF0; \
+	\
+	/* Idle State */ \
+	port_user &= ~((1<<PU_RELAY_RC1)|(1<<PU_RELAY_RC2)|(1<<PU_RELAY_RC3)|(1<<PU_RELAY_RC4)); \
+} \
+
+PROCESS_THREAD(relay_process, ev, data)
+{
+	
+	PROCESS_BEGIN();
+	
+	// Initialization
+	relay_request = eeprom_status.relay_request;
+	relay_state = !relay_request;
+	etimer_set(&relay_timer, 20E-3*CLOCK_SECOND);
+	
+	while (1)
+	{
+		relay_governor();
+		
+		if ((relay_cmd&0xF)==0)
+		{
+			// Idle state
+			//PORTA.OUTCLR = (1<<7)|(1<<6); // RC1 RC4
+			//PORTB.OUTCLR = (1<<0)|(1<<1); // RC2 RC3
+			port_user &= ~((1<<PU_RELAY_RC1)|(1<<PU_RELAY_RC2)|(1<<PU_RELAY_RC3)|(1<<PU_RELAY_RC4));
+		}
+		
+		if (relay_cmd&RELAY_CMD_RIGHT1)
+		{
+			//PORTB.OUTSET = (1<<0)|(1<<1); // RC2 RC3
+			port_user |= (1<<PU_RELAY_1)|(1<<PU_RELAY_RC2)|(1<<PU_RELAY_RC3);
+			RELAY_CHECK_DONE(RELAY_CMD_RIGHT1);
+		}
+		else if (relay_cmd&RELAY_CMD_LEFT1)
+		{
+			//PORTA.OUTSET = (1<<7)|(1<<6); // RC1 RC4
+			port_user &= ~(1<<PU_RELAY_1);
+			port_user |= (1<<PU_RELAY_RC1)|(1<<PU_RELAY_RC4);
+			RELAY_CHECK_DONE(RELAY_CMD_LEFT1);
+		}
+		else if (relay_cmd&RELAY_CMD_RIGHT2)
+		{
+			//PORTA.OUTSET = (1<<6);	// RC4
+			//PORTB.OUTSET = (1<<1);	// RC3
+			port_user |= (1<<PU_RELAY_2)|(1<<PU_RELAY_RC3)|(1<<PU_RELAY_RC4);
+			RELAY_CHECK_DONE(RELAY_CMD_RIGHT2);
+		}
+		else if (relay_cmd&RELAY_CMD_LEFT2)
+		{
+			//PORTA.OUTSET = (1<<7);	// RC1
+			//PORTB.OUTSET = (1<<0);	// RC2
+			port_user &= ~(1<<PU_RELAY_2);
+			port_user |= (1<<PU_RELAY_RC1)|(1<<PU_RELAY_RC2);
+			RELAY_CHECK_DONE(RELAY_CMD_LEFT2);
+		}
+
+		if ((relay_cmd&0xF0) == 0)
+		relay_cmd = 0;
+		else
+		relay_cmd -= 0x10;
+		
+		PROCESS_YIELD();
+		etimer_reset(&relay_timer);
+	}
+	
+	PROCESS_END();
+}
+
+inline void servo_power_enable(void)
+{
+	//PORTA.OUTCLR = (1<<5);
+	//port[0][5] = 63;
+	port_user |= (1<<PU_SERVO_POWER);
+}
+
+inline void servo_power_disable(void)
+{
+	//PORTA.OUTSET = (1<<5);
+	//port[0][5] = 0;
+	port_user &= ~(1<<PU_SERVO_POWER);
+}
+
+#define PORT_PIN0	(PORTC.IN&(1<<2)) // SIG_S12_PWMPC2
+#define PORT_PIN1	(PORTC.IN&(1<<3)) // SIG_S22_PWMPC3
+#define PORT_PIN2	(PORTC.IN&(1<<7)) // SIG_IS1_RX	PC7
+#define PORT_PIN3	(PORTC.IN&(1<<6)) // SIG_IS2_RX	PC6
+#define PORT_PIN4	(PORTD.IN&(1<<5)) // SIG_IS1_TX	PD5
+#define PORT_PIN5	(PORTC.IN&(1<<5)) // SIG_IS2_TX	PC5
+#define PORT_PIN6	(PORTD.IN&(1<<1)) // SIG_IS1_O	PD1
+#define PORT_PIN7	(PORTD.IN&(1<<0)) // SIG_IS2_O	PD0
+#define PORT_PIN8	(PORTA.IN&(1<<6)) // S1L - PA6
+#define PORT_PIN9	(PORTA.IN&(1<<7)) // S1R - PA7
+#define PORT_PIN10	(PORTB.IN&(1<<0)) // S1H - PB0
+#define PORT_PIN11	(PORTB.IN&(1<<1)) // S2L - PB1
+#define PORT_PIN12	(PORTC.IN&(1<<0)) // S2R - PC0
+#define PORT_PIN13	(PORTC.IN&(1<<1)) // S2H - PC1
+#define PORT_PIN14	(PORTA.IN&(1<<5)) // SERVO_POWER PA5
+#define PORT_PIN15	(0)				  // n/a
+
+uint16_t port_pin_status(void)
+{
+	uint16_t temp16;
+	temp16 = PORT_PIN0?1:0;
+	temp16 |= PORT_PIN1?2:0;
+	temp16 |= PORT_PIN2?4:0;
+	temp16 |= PORT_PIN3?8:0;
+	temp16 |= PORT_PIN4?16:0;
+	temp16 |= PORT_PIN5?32:0;
+	temp16 |= PORT_PIN6?64:0;
+	temp16 |= PORT_PIN7?128:0;
+	temp16 |= PORT_PIN8?256:0;
+	temp16 |= PORT_PIN9?512:0;
+	temp16 |= PORT_PIN10?1024:0;
+	temp16 |= PORT_PIN11?2048:0;
+	temp16 |= PORT_PIN12?4096:0;
+	temp16 |= PORT_PIN13?8192:0;
+	temp16 |= PORT_PIN14?16384:0;
+	temp16 |= PORT_PIN15?32768:0;
+	
+	return temp16;
+}
+
+void port_di_init(void)
+{
+		if (eeprom.port_config&(1<<PORT_MODE_PULLUP_ENABLE))
+	{
+		PORTC.PIN7CTRL = PORT_OPC_PULLUP_gc;
+		PORTC.PIN6CTRL = PORT_OPC_PULLUP_gc;
+		PORTC.PIN5CTRL = PORT_OPC_PULLUP_gc;
+		PORTD.PIN5CTRL = PORT_OPC_PULLUP_gc;
+		PORTD.PIN1CTRL = PORT_OPC_PULLUP_gc;
+		PORTD.PIN0CTRL = PORT_OPC_PULLUP_gc;
+		PORTC.PIN0CTRL = (PORTC.PIN0CTRL&(~PORT_OPC_gm))|PORT_OPC_PULLUP_gc;
+		PORTC.PIN1CTRL = (PORTC.PIN1CTRL&(~PORT_OPC_gm))|PORT_OPC_PULLUP_gc;
+		
+		PORTA.PIN5CTRL = PORT_OPC_PULLUP_gc;
+		PORTA.PIN6CTRL = PORT_OPC_PULLUP_gc;
+		PORTA.PIN7CTRL = PORT_OPC_PULLUP_gc;
+		PORTB.PIN0CTRL = PORT_OPC_PULLUP_gc;
+		PORTB.PIN1CTRL = PORT_OPC_PULLUP_gc;
+	}
+	else
+	{
+		PORTC.PIN7CTRL = PORT_OPC_TOTEM_gc;
+		PORTC.PIN6CTRL = PORT_OPC_TOTEM_gc;
+		PORTC.PIN5CTRL = PORT_OPC_TOTEM_gc;
+		PORTD.PIN5CTRL = PORT_OPC_TOTEM_gc;
+		PORTD.PIN1CTRL = PORT_OPC_TOTEM_gc;
+		PORTD.PIN0CTRL = PORT_OPC_TOTEM_gc;
+		PORTC.PIN0CTRL = (PORTC.PIN0CTRL&(~PORT_OPC_gm))|PORT_OPC_TOTEM_gc;
+		PORTC.PIN1CTRL = (PORTC.PIN1CTRL&(~PORT_OPC_gm))|PORT_OPC_TOTEM_gc;
+
+		PORTA.PIN5CTRL = PORT_OPC_TOTEM_gc;
+		PORTA.PIN6CTRL = PORT_OPC_TOTEM_gc;
+		PORTA.PIN7CTRL = PORT_OPC_TOTEM_gc;
+		PORTB.PIN0CTRL = PORT_OPC_TOTEM_gc;
+		PORTB.PIN1CTRL = PORT_OPC_TOTEM_gc;
+	}
+
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 0, 2);
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 1, 3);
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 2, 7);
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 3, 6);
+	MAP_BITS(eeprom.port_dir, PORTD.DIR, 4, 5);
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 5, 5);
+	MAP_BITS(eeprom.port_dir, PORTD.DIR, 6, 1);
+	MAP_BITS(eeprom.port_dir, PORTD.DIR, 7, 0);
+	MAP_BITS(eeprom.port_dir, PORTA.DIR, 8, 6);
+	MAP_BITS(eeprom.port_dir, PORTA.DIR, 9, 7);
+	MAP_BITS(eeprom.port_dir, PORTB.DIR, 10, 0);
+	MAP_BITS(eeprom.port_dir, PORTB.DIR, 11, 1);
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 12, 0);
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 13, 1);
+	MAP_BITS(eeprom.port_dir, PORTA.DIR, 14, 5);
+
+	// Initial key state
+	port_di = port_pin_status();
+}
+
+void port_update_mapping(void)
+{
+	port[2][2] = pwm_port[0].pwm_current;
+	port[2][3] = pwm_port[1].pwm_current;
+	port[2][7] = pwm_port[2].pwm_current;
+	port[2][6] = pwm_port[3].pwm_current;
+	port[3][5] = pwm_port[4].pwm_current;
+	port[2][5] = pwm_port[5].pwm_current;
+	port[3][1] = pwm_port[6].pwm_current;
+	port[3][0] = pwm_port[7].pwm_current;
+	port[0][6] = pwm_port[8].pwm_current;
+	port[0][7] = pwm_port[9].pwm_current;
+	port[1][0] = pwm_port[10].pwm_current;
+	port[1][1] = pwm_port[11].pwm_current;
+	port[2][0] = pwm_port[12].pwm_current;
+	port[2][1] = pwm_port[13].pwm_current;
+	port[0][5] = pwm_port[14].pwm_current;
 }

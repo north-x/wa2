@@ -33,6 +33,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <avr/eeprom.h>
+#include <avr/pgmspace.h>
 
 #include "config.h"
 #include "eeprom.h"
@@ -44,7 +45,7 @@ struct t_eeprom_status eeprom_status;
 struct t_eeprom_status eeprom_status_shadow;
 struct t_eeprom_status eeprom_status_eemem EEMEM;
 
-struct t_eeprom_storage eeprom_default = {
+const struct t_eeprom_storage PROGMEM eeprom_default = {
 			.salt = 0xAA+SOFTWARE_VERSION,
 			.sv_serial_number = 0xFFFF,
 			.sv_destination_id = 0xFFFF,
@@ -53,7 +54,7 @@ struct t_eeprom_storage eeprom_default = {
 #undef EEPROM_DEFAULT
         };
 
-struct t_eeprom_status eeprom_status_default = {
+const struct t_eeprom_status PROGMEM eeprom_status_default = {
 	.flags = 0,
 #define EEPROM_STATUS_DEFAULT
 #include "config.h"
@@ -79,8 +80,8 @@ void eeprom_load_storage(void)
 
 void eeprom_load_defaults(void)
 {
-	memcpy(&eeprom, &eeprom_default, sizeof(t_eeprom_storage));
-	memcpy(&eeprom_status, &eeprom_status_default, sizeof(t_eeprom_status));
+	memcpy_P(&eeprom, &eeprom_default, sizeof(t_eeprom_storage));
+	memcpy_P(&eeprom_status, &eeprom_status_default, sizeof(t_eeprom_status));
 }
 
 void eeprom_sync_storage(void)
