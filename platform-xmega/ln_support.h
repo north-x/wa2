@@ -235,6 +235,24 @@ uint8_t ln_gpio_status[2];
 .ln_gpio_status = { 0, 0 },
 #endif
 
+/*
+ * LN Receive Callback Definition
+ *
+ * Function to be called when a valid packet was received
+ */
+#ifdef LN_RX_CALLBACK
+//LN_RX_CALLBACK(ln_throttle_process)
+#endif
+
+/*
+ * SV CMD Callback Definition
+ *
+ * Function to be called when SV#5 is written
+ */
+#ifdef SV_CMD_CALLBACK
+SV_CMD_CALLBACK(lns_sv_cmd_callback)
+#endif
+
 #else
 /************************************************************************/
 /* Module Header File                                                   */
@@ -276,12 +294,12 @@ uint8_t ln_create_message_ack(uint8_t *msg);
 uint8_t ln_is_ack_message(uint8_t *msg);
 void ln_gpio_process_tx(void);
 void ln_gpio_process_rx(lnMsg *LnPacket, uint8_t source);
-void ln_load_board_config(void);
 void ln_create_opcode(uint8_t *buf, uint8_t opc, uint16_t addr);
 void ln_update_threshold(void);
 void ln_trigger_lookup_update(void);
 void ln_update_lookup(void);
 uint8_t getLnMsgChecksum(lnMsg *msg);
+void lns_sv_cmd_callback(uint8_t cmd);
 
 PROCESS_NAME(ln_process);
 

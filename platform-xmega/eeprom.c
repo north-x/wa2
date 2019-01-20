@@ -40,26 +40,28 @@
 
 struct t_eeprom_storage eeprom;
 struct t_eeprom_storage eeprom_shadow;
-struct t_eeprom_storage eeprom_eemem EEMEM;
+struct t_eeprom_storage eeprom_eemem __attribute__((section (".eeprom,\"aw\",@progbits\n.p2align 5;")));
 struct t_eeprom_status eeprom_status;
 struct t_eeprom_status eeprom_status_shadow;
 struct t_eeprom_status eeprom_status_eemem EEMEM;
 
-const struct t_eeprom_storage PROGMEM eeprom_default = {
-			.salt = 0xAA+SOFTWARE_VERSION,
-			.sv_serial_number = 0xFFFF,
-			.sv_destination_id = 0xFFFF,
-#define EEPROM_DEFAULT
-#include "config.h"
-#undef EEPROM_DEFAULT
-        };
+const struct t_eeprom_default eeprom_default PROGMEM = {
+	.eeprom = {
+				.salt = 0xAA+SOFTWARE_VERSION,
+				.sv_serial_number = 0xFFFF,
+				.sv_destination_id = 0xFFFF,
+	#define EEPROM_DEFAULT
+	#include "config.h"
+	#undef EEPROM_DEFAULT
+			},
 
-const struct t_eeprom_status PROGMEM eeprom_status_default = {
-	.flags = 0,
-#define EEPROM_STATUS_DEFAULT
-#include "config.h"
-#undef EEPROM_STATUS_DEFAULT
-	};
+	.eeprom_status = {
+		.flags = 0,
+	#define EEPROM_STATUS_DEFAULT
+	#include "config.h"
+	#undef EEPROM_STATUS_DEFAULT
+		}
+};
 
 void eeprom_load_status(void)
 {
@@ -74,14 +76,14 @@ void eeprom_load_storage(void)
 	
 	memcpy(&eeprom_shadow, &eeprom, sizeof(t_eeprom_storage));
 	
-	if (eeprom.salt!=eeprom_default.salt)
+	if (eeprom.salt!=pgm_read_byte(&eeprom_default.eeprom.salt))
 		eeprom_load_defaults();
 }
 
 void eeprom_load_defaults(void)
 {
-	memcpy_P(&eeprom, &eeprom_default, sizeof(t_eeprom_storage));
-	memcpy_P(&eeprom_status, &eeprom_status_default, sizeof(t_eeprom_status));
+	memcpy_P(&eeprom, &eeprom_default.eeprom, sizeof(t_eeprom_storage));
+	memcpy_P(&eeprom_status, &eeprom_default.eeprom_status, sizeof(t_eeprom_status));
 }
 
 void eeprom_sync_storage(void)

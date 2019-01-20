@@ -76,11 +76,11 @@ PROCESS_THREAD(wa2_process, ev, data)
 			// Turn on relay if position greater than 127
 			if (servo[0].position_actual>127)
 			{
-				port_user |= (1<<0);
+				relay_request |= (1<<0);
 			}
 			else
 			{
-				port_user &= ~(1<<0);		
+				relay_request &= ~(1<<0);		
 			}
 			
 			// If we reached the final position, transmit a switch report
@@ -167,11 +167,11 @@ PROCESS_THREAD(wa2_process, ev, data)
 			// Turn on relay if position greater than 127
 			if (servo[1].position_actual>127)
 			{
-				port_user |= (1<<1);
+				relay_request |= (1<<1);
 			}
 			else
 			{
-				port_user &= ~(1<<1);
+				relay_request &= ~(1<<1);
 			}
 			
 			// If we reached the final position, transmit a switch report
@@ -473,10 +473,19 @@ void ln_throttle_process(lnMsg *LnPacket)
 void ln_sv_cmd_callback(uint8_t cmd)
 {
 	static uint16_t * servo_act[] = {&servo[0].min, &servo[1].min};
+	static uint16_t servo_timeout_shadow = 0;
 	if (cmd==5)
 	{
 		rSlot.slot = 0;
-		servo_status ^= (1<<SERVO_STATUS_PWR_ALWAYS_ON);
+		if (eeprom.servo_timeout==0)
+		{
+			eeprom.servo_timeout = servo_timeout_shadow;
+		}
+		else
+		{
+			servo_timeout_shadow = eeprom.servo_timeout;
+			eeprom.servo_timeout = 0;
+		}
 	}
 	else if ((cmd>=10) && (cmd<30))
 	{
@@ -545,7 +554,11 @@ void ln_sv_cmd_callback(uint8_t cmd)
 			case 0:
 				eeprom.servo_min[idx_servo] = servo[idx_servo].min;
 				eeprom.servo_max[idx_servo] = servo[idx_servo].max;
+				
+				eeprom.servo_timeout = servo_timeout_shadow;				
 				eeprom_sync_storage();
+				eeprom.servo_timeout = 0;
+				
 				break;
 			// Center servo in current position (left or right)
 			case 5:
@@ -667,9 +680,9 @@ PROCESS_THREAD(relay_process, ev, data)
 		}
 
 		if ((relay_cmd&0xF0) == 0)
-		relay_cmd = 0;
+			relay_cmd = 0;
 		else
-		relay_cmd -= 0x10;
+			relay_cmd -= 0x10;
 		
 		PROCESS_YIELD();
 		etimer_reset(&relay_timer);
@@ -734,7 +747,23 @@ uint16_t port_pin_status(void)
 
 void port_di_init(void)
 {
-		if (eeprom.port_config&(1<<PORT_MODE_PULLUP_ENABLE))
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 0, 2);
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 1, 3);
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 2, 7);
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 3, 6);
+	MAP_BITS(eeprom.port_dir, PORTD.DIR, 4, 5);
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 5, 5);
+	MAP_BITS(eeprom.port_dir, PORTD.DIR, 6, 1);
+	MAP_BITS(eeprom.port_dir, PORTD.DIR, 7, 0);
+	MAP_BITS(eeprom.port_dir, PORTA.DIR, 8, 6);
+	MAP_BITS(eeprom.port_dir, PORTA.DIR, 9, 7);
+	MAP_BITS(eeprom.port_dir, PORTB.DIR, 10, 0);
+	MAP_BITS(eeprom.port_dir, PORTB.DIR, 11, 1);
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 12, 0);
+	MAP_BITS(eeprom.port_dir, PORTC.DIR, 13, 1);
+	MAP_BITS(eeprom.port_dir, PORTA.DIR, 14, 5);
+
+	if (eeprom.port_config&(1<<PORT_MODE_PULLUP_ENABLE))
 	{
 		PORTC.PIN7CTRL = PORT_OPC_PULLUP_gc;
 		PORTC.PIN6CTRL = PORT_OPC_PULLUP_gc;
@@ -768,23 +797,7 @@ void port_di_init(void)
 		PORTB.PIN0CTRL = PORT_OPC_TOTEM_gc;
 		PORTB.PIN1CTRL = PORT_OPC_TOTEM_gc;
 	}
-
-	MAP_BITS(eeprom.port_dir, PORTC.DIR, 0, 2);
-	MAP_BITS(eeprom.port_dir, PORTC.DIR, 1, 3);
-	MAP_BITS(eeprom.port_dir, PORTC.DIR, 2, 7);
-	MAP_BITS(eeprom.port_dir, PORTC.DIR, 3, 6);
-	MAP_BITS(eeprom.port_dir, PORTD.DIR, 4, 5);
-	MAP_BITS(eeprom.port_dir, PORTC.DIR, 5, 5);
-	MAP_BITS(eeprom.port_dir, PORTD.DIR, 6, 1);
-	MAP_BITS(eeprom.port_dir, PORTD.DIR, 7, 0);
-	MAP_BITS(eeprom.port_dir, PORTA.DIR, 8, 6);
-	MAP_BITS(eeprom.port_dir, PORTA.DIR, 9, 7);
-	MAP_BITS(eeprom.port_dir, PORTB.DIR, 10, 0);
-	MAP_BITS(eeprom.port_dir, PORTB.DIR, 11, 1);
-	MAP_BITS(eeprom.port_dir, PORTC.DIR, 12, 0);
-	MAP_BITS(eeprom.port_dir, PORTC.DIR, 13, 1);
-	MAP_BITS(eeprom.port_dir, PORTA.DIR, 14, 5);
-
+	
 	// Initial key state
 	port_di = port_pin_status();
 }

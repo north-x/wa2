@@ -168,11 +168,11 @@ void pwm_step(void)
 		
 		if (pwm_port[index].dimm_current<DIMM_RANGE_MIN)
 		{
-			pwm_port[index].pwm_current = DIMM_RANGE_MIN;
+			pwm_port[index].pwm_current = pwm_gamma_5b6b[DIMM_RANGE_MIN];
 		}
 		else if (pwm_port[index].dimm_current>DIMM_RANGE_MAX)
 		{
-			pwm_port[index].pwm_current = DIMM_RANGE_MAX;
+			pwm_port[index].pwm_current = pwm_gamma_5b6b[DIMM_RANGE_MAX];
 		}
 		else
 		{
@@ -192,7 +192,7 @@ Offset	Description
 96		~port_do & blink
 112		~port_do & ~blink
 128		port_user
-136		port_blink_phase
+144		port_blink_phase
 */
 uint8_t port_map_get_bit(uint8_t index)
 {

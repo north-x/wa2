@@ -55,6 +55,11 @@ typedef struct t_eeprom_status {
 #undef EEPROM_STATUS_CFG
 } t_eeprom_status;
 
+typedef struct t_eeprom_default {
+	struct t_eeprom_storage eeprom;
+	struct t_eeprom_status eeprom_status;
+} t_eeprom_default;
+
 void eeprom_init(void);
 void eeprom_read(unsigned char addr, unsigned char len, unsigned char *buf);
 unsigned char eeprom_write(unsigned char addr, unsigned char len, unsigned char *buf);

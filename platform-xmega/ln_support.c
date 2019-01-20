@@ -84,15 +84,12 @@ void loconet_init(void)
 	if (eeprom.sv_serial_number==0xFFFF)
 	{
 		eeprom.sv_serial_number = deviceID;
-		ln_load_board_config();
 		ln_update_lookup();
 		eeprom_sync_storage();
 		
 		// Issue a software reset
-		/*
 		CCP = CCP_IOREG_gc;
 		RST.CTRL = RST_SWRST_bm;
-		*/
 	}
 	
 	if (readSVDestinationId()==0xFFFF)
@@ -761,26 +758,16 @@ void ln_update_lookup(void)
 	}
 }
 
-void ln_load_board_config(void)
+void lns_sv_cmd_callback(uint8_t cmd)
 {
 	uint8_t index;
 	
-	switch (deviceID)
+	if (cmd==255)
 	{
-		case 0xB300:
-			ln_create_opcode(eeprom.ln_gpio_opcode[0], OPC_SW_REQ, 2*955);
-			ln_create_opcode(eeprom.ln_gpio_opcode[2], OPC_SW_REQ, 2*955+1);
-			break;
-		default:
-			return;
+		// Force transmission of current state
+		for (index=0;index<LN_GPIO_BW;index++)
+		{
+			ln_gpio_tx[index] = 0xFF;
+		}
 	}
-	
-	for (index=4;index<16;index++)
-	{
-		eeprom.ln_gpio_opcode[index][0] = 0;
-	}
-	/*
-	eeprom.ln_threshold = 50;
-	ACA.CTRLB = ((eeprom.ln_threshold/4)-1)&0x3F;
-	*/
 }

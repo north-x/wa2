@@ -42,22 +42,13 @@
 #include "usb/usb.h"
 #include <avr/wdt.h>
 #include <string.h>
-#include "ln_buf.h"
 
 void cmd_exec(void);
-
-extern rwSlotDataMsg rSlot;
-
 uint8_t cmd_register = 0;
-
-
-// Block mapping of TSE scripts starting at SV 112/170/240/304 (0x70/0xB0/0xF0/0x130)
-SV_BLOCK_TABLE_BEGIN()
-SV_BLOCK_TABLE_END();
 
 SV_TABLE_BEGIN()
 SV_CONST(1, "EEPROM Size", 0)
-SV_CONST(2, "SW Version", SOFTWARE_VERSION)
+SV(2, "SW Version", eeprom.salt, 0)
 SV_LSB(3, "Serial Number L", eeprom.sv_serial_number, 0)
 SV_MSB(4, "Serial Number H", eeprom.sv_serial_number, 0)
 SV(5, "Command Register", cmd_register, cmd_exec)
