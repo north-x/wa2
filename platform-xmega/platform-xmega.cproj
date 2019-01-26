@@ -76,7 +76,6 @@
         <avrgcc.compiler.symbols.DefSymbols>
           <ListValues>
             <Value>F_CPU=32000000L</Value>
-            <Value>SOFTWARE_VERSION=4</Value>
             <Value>USB_MAXEP=2</Value>
             <Value>AVR</Value>
             <Value>NDEBUG</Value>
@@ -114,7 +113,6 @@
         <avrgcc.compiler.symbols.DefSymbols>
           <ListValues>
             <Value>F_CPU=32000000L</Value>
-            <Value>SOFTWARE_VERSION=4</Value>
             <Value>USB_MAXEP=2</Value>
             <Value>AVR</Value>
           </ListValues>

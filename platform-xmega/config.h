@@ -40,4 +40,5 @@
 #include "servo.h"
 #include "wa2.h"
 
+#define SOFTWARE_VERSION	1
 #undef CONFIGURATION

@@ -47,7 +47,7 @@ struct t_eeprom_status eeprom_status_eemem EEMEM;
 
 const struct t_eeprom_default eeprom_default PROGMEM = {
 	.eeprom = {
-				.salt = 0xAA+SOFTWARE_VERSION,
+				.salt = SOFTWARE_VERSION,
 				.sv_serial_number = 0xFFFF,
 				.sv_destination_id = 0xFFFF,
 	#define EEPROM_DEFAULT
