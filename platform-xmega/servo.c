@@ -55,7 +55,6 @@ void servo_power_disable(void);
 
 volatile uint8_t servo_status = 0;
 volatile uint16_t servo_timer = 0;
-volatile uint8_t servo_timer2 = 0;
 uint8_t servo_delay = 3;
 uint8_t servo_start_method = 0;
 
@@ -73,11 +72,7 @@ volatile enum _ServoIsrState
 // Timing Definitions:
 // (all values given in us)
 
-#define TICK_PERIOD       20000L    // 20ms tick for Timing Engine
-                                    // => possible values for timings up to
-                                    //    5.1s (=255/0.020)
-                                    // note: this is also used as frame for
-                                    // Servo-Outputs (OCR1A and OCR1B)
+#define TICK_PERIOD       15625L
 
 t_servo servo[SERVO_COUNT];
 
@@ -239,11 +234,8 @@ void servo_init(void)
 	servo[1].pulse_value = servo_calc_next_val(1);
 	
 	// Init code for ATxmega
-	#define PERVAL   (F_CPU / 1000000L * TICK_PERIOD / T1_PRESCALER)
-	
-	// Event channel 0: 2 MHz clock
-	EVSYS.CH2MUX = EVSYS_CHMUX_PRESCALER_16_gc;
-	
+	#define PERVAL   (F_CPU / 1000000L * TICK_PERIOD / SERVO_PRESCALER)
+		
 	// Initial conditions of timer
 	TCC0.CNT = 0;
 	TCC0.PER = PERVAL;
@@ -254,8 +246,8 @@ void servo_init(void)
 	
 	// Mode: Single Slope PWM
 	TCC0.CTRLB = TC_WGMODE_SINGLESLOPE_gc;
-	// Clock source: Event channel 0
-	TCC0.CTRLA = TC_CLKSEL_EVCH2_gc;
+	// Clock source: Prescaler 8
+	TCC0.CTRLA = TC_CLKSEL_DIV8_gc;
 	// Clear pending interrupts
 	TCC0.INTFLAGS = TC0_OVFIF_bm;
 	// Enable low priority interrupt
@@ -303,7 +295,7 @@ PROCESS_THREAD(servo_process, ev, data)
 		
 	// Enable Power (for 1s)
 	servo_status |= (1<<SERVO_STATUS_PWR_TEST);
-	servo_timer = 50;
+	servo_timer = 64;
 	
 	do {
 		PROCESS_PAUSE();
@@ -320,20 +312,13 @@ PROCESS_THREAD(servo_process, ev, data)
 		for (index=0;index<2;index++)
 		{
 			if (servo[index].status&(1<<ST_BIT_MOVING))
-			{
-				servo[index].command |= (1<<SC_BIT_MOVING);
-							
+			{							
 				// Write flags to eeprom after ~5s if the user has power always on
 				// or after the timeout occurs
 				if (eeprom.servo_timeout==0)
 					servo_timer = 0xFF;
 				else
 					servo_timer = eeprom.servo_timeout;
-			}
-			else
-			{
-				// Servo is not moving
-				servo[index].command &= ~(1<<SC_BIT_MOVING);
 			}
 		}
 					
@@ -385,7 +370,7 @@ void servo_isr(void)
     T3CONbits.TMR3ON = 0;
 #endif
 	
-	servo_status |= (1<<SERVO_STATUS_INT_FLAG)|(1<<SERVO_STATUS_TICK_FLAG);
+	servo_status |= (1<<SERVO_STATUS_INT_FLAG);
 	
 	if (servo_isr_timer)
 		servo_isr_timer--;
@@ -503,23 +488,17 @@ void servo_isr(void)
 				// Start Timer
 				T3CONbits.TMR3ON = 1;
 #elif defined(__AVR_XMEGA__)
-				TCC0.CCA = PERVAL;
-				TCC0.CCB = PERVAL;
-				TCC0.CCC = PERVAL;
-				TCC0.CCD = PERVAL;
+				TCC0.CCA = PERVAL+1;
+				TCC0.CCB = PERVAL+1;
+				TCC0.CCC = PERVAL+1;
+				TCC0.CCD = PERVAL+1;
 				
-				if (!(servo_status&(1<<SERVO_STATUS_PWM_DISABLE)))
-				{
-					servo_power_disable();
-				}
+				servo_power_disable();
 #elif defined(__AVR__)
 				OCR1A = TOPVAL;
 				OCR1B = TOPVAL;
-				
-				if (!(servo_status&(1<<SERVO_STATUS_PWM_DISABLE)))
-				{
-					PORTB &= ~(1<<PB0);
-				}
+
+				PORTB &= ~(1<<PB0);
 #endif				
 		        return;
 		    }

@@ -94,7 +94,7 @@ uint8_t servo_position[2];
  */
 #ifdef EEPROM_DEFAULT
 .servo_config = (1<<SERVO_STATUS_ENABLE_PWM_A),
-.servo_startup_delay = 80,
+.servo_startup_delay = 64,
 .servo_timeout = 0,
 .servo_start_method = 0,
 .servo_min = {32767, 32767},
@@ -106,7 +106,7 @@ uint8_t servo_position[2];
  *	EEPROM Status Variable Default Configuration
  */
 #ifdef EEPROM_STATUS_DEFAULT
-.servo_position = {127, 127},
+.servo_position = {0, 0},
 #endif
 
 #else
@@ -134,29 +134,19 @@ uint8_t servo_position[2];
 
 // defines for the Timer and the OCR
 // note: only valid for "rounded" F_CPU values
-#define T1_PRESCALER		16
+#define SERVO_PRESCALER		8
 
-#define SERVO_MIN          (F_CPU / 1000000L * SERVO_MINTIME / T1_PRESCALER)
-#define SERVO_DELTA        (F_CPU / 1000000L * SERVO_INTERVAL / T1_PRESCALER)
-#define SERVO_MAX          (F_CPU / 1000000L * (SERVO_MINTIME+SERVO_INTERVAL) / T1_PRESCALER)
+#define SERVO_MIN          (F_CPU / 1000000L * SERVO_MINTIME / SERVO_PRESCALER)
+#define SERVO_DELTA        (F_CPU / 1000000L * SERVO_INTERVAL / SERVO_PRESCALER)
+#define SERVO_MAX          (F_CPU / 1000000L * (SERVO_MINTIME+SERVO_INTERVAL) / SERVO_PRESCALER)
 
 // bit field for servo.status:
-//#define ST_BIT_POSITION		0		// Last valid position: 0: A/L , 1: B/R
 #define ST_BIT_MOVING    7          // 0=stopped, 1=moving
-#define ST_BIT_AT_SETPOINT	6
-//#define ST_BIT_TRANSMIT_STATUS	5
-//#define ST_BIT_MODE_MULTIPOSITION	4
-
-// bit field for servo.command
-//#define SC_BIT_POSITION	0
-#define SC_BIT_MOVING	7
 
 #define SERVO_STATUS_PWR                7
 #define SERVO_STATUS_PWR_ALWAYS_ON      6
 #define SERVO_STATUS_PWR_TEST			5
 #define SERVO_STATUS_INT_FLAG			4
-#define SERVO_STATUS_PWM_DISABLE		3
-#define SERVO_STATUS_TICK_FLAG			2
 #define SERVO_STATUS_ENABLE_PWM_B		1
 #define SERVO_STATUS_ENABLE_PWM_A		0
 
@@ -167,12 +157,7 @@ typedef struct SERVO_T
     uint16_t min;               // lower move limit [0..65535]
     uint16_t max;               // upper move limit [0..65535]
     
-    uint8_t status;          // Bit 0: ACTUAL:   0=pre A, 1=pre B movement
-                                    // Bit 1: MOVING:   0=at endpoint, 1=currently moving
-                                    // Bit 5: OUT_CTRL: 0=no, 1=yes
-                                    // Bit 6: REPEAT:   0=single, 1=forever
-                                    // Bit 7: TERMINATE: flag: terminate after next B
-	uint8_t command;								
+    uint8_t status;				// Bit 7: MOVING:   0=at endpoint, 1=currently moving
       
     uint16_t active_time;       // runtime: relative time to start point
                                     // 0xFFFF   = restart Servos
@@ -193,7 +178,6 @@ void servo_mode_update(void);
 extern t_servo servo[SERVO_COUNT];
 extern volatile uint8_t servo_status;
 extern volatile uint16_t servo_timer;
-extern volatile uint8_t servo_timer2;
 
 void servo_isr(void);
 void servo_init(void);

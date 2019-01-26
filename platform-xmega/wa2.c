@@ -645,35 +645,27 @@ PROCESS_THREAD(relay_process, ev, data)
 		if ((relay_cmd&0xF)==0)
 		{
 			// Idle state
-			//PORTA.OUTCLR = (1<<7)|(1<<6); // RC1 RC4
-			//PORTB.OUTCLR = (1<<0)|(1<<1); // RC2 RC3
 			port_user &= ~((1<<PU_RELAY_RC1)|(1<<PU_RELAY_RC2)|(1<<PU_RELAY_RC3)|(1<<PU_RELAY_RC4));
 		}
 		
 		if (relay_cmd&RELAY_CMD_RIGHT1)
 		{
-			//PORTB.OUTSET = (1<<0)|(1<<1); // RC2 RC3
 			port_user |= (1<<PU_RELAY_1)|(1<<PU_RELAY_RC2)|(1<<PU_RELAY_RC3);
 			RELAY_CHECK_DONE(RELAY_CMD_RIGHT1);
 		}
 		else if (relay_cmd&RELAY_CMD_LEFT1)
 		{
-			//PORTA.OUTSET = (1<<7)|(1<<6); // RC1 RC4
 			port_user &= ~(1<<PU_RELAY_1);
 			port_user |= (1<<PU_RELAY_RC1)|(1<<PU_RELAY_RC4);
 			RELAY_CHECK_DONE(RELAY_CMD_LEFT1);
 		}
 		else if (relay_cmd&RELAY_CMD_RIGHT2)
 		{
-			//PORTA.OUTSET = (1<<6);	// RC4
-			//PORTB.OUTSET = (1<<1);	// RC3
 			port_user |= (1<<PU_RELAY_2)|(1<<PU_RELAY_RC3)|(1<<PU_RELAY_RC4);
 			RELAY_CHECK_DONE(RELAY_CMD_RIGHT2);
 		}
 		else if (relay_cmd&RELAY_CMD_LEFT2)
 		{
-			//PORTA.OUTSET = (1<<7);	// RC1
-			//PORTB.OUTSET = (1<<0);	// RC2
 			port_user &= ~(1<<PU_RELAY_2);
 			port_user |= (1<<PU_RELAY_RC1)|(1<<PU_RELAY_RC2);
 			RELAY_CHECK_DONE(RELAY_CMD_LEFT2);
@@ -693,15 +685,11 @@ PROCESS_THREAD(relay_process, ev, data)
 
 inline void servo_power_enable(void)
 {
-	//PORTA.OUTCLR = (1<<5);
-	//port[0][5] = 63;
 	port_user |= (1<<PU_SERVO_POWER);
 }
 
 inline void servo_power_disable(void)
 {
-	//PORTA.OUTSET = (1<<5);
-	//port[0][5] = 0;
 	port_user &= ~(1<<PU_SERVO_POWER);
 }
 
